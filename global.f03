@@ -30,7 +30,9 @@ type(C_PTR)                              :: pT, ipT   ! plan and inverse plan
 
 contains
 
-subroutine set_imex_params(c1,c2,c3, d11,d21,d31, d12,d22,d32, d13,d23,d33)
+subroutine set_imex_params(c1,c2,c3, d11,d21,d31, d12,d22,d32, d13,d23,d33, &
+                           dh11,dh12,dh13,dh14, dh21,dh22,dh23,dh24,        &
+                           dh31,dh32,dh33,dh34, dh41,dh42,dh43,dh44)
 
    implicit none
 
@@ -41,6 +43,10 @@ subroutine set_imex_params(c1,c2,c3, d11,d21,d31, d12,d22,d32, d13,d23,d33)
    real(dp) :: d11, d12, d13
    real(dp) :: d21, d22, d23
    real(dp) :: d31, d32, d33
+   real(dp) :: dh11, dh12, dh13, dh14
+   real(dp) :: dh21, dh22, dh23, dh24
+   real(dp) :: dh31, dh32, dh33, dh34
+   real(dp) :: dh41, dh42, dh43, dh44
 
 
    gmma = 0.4358665215_dp
@@ -61,6 +67,27 @@ subroutine set_imex_params(c1,c2,c3, d11,d21,d31, d12,d22,d32, d13,d23,d33)
    d13 = 0.0_dp
    d23 = 0.0_dp
    d33 = c3
+
+   ! dhat_ij
+   dh11 = 0.0_dp
+   dh21 = 0.4358665215_dp
+   dh31 = 0.3212788860_dp
+   dh41 = -0.105858296_dp
+
+   dh12 = 0.0_dp
+   dh22 = 0.0_dp
+   dh32 = 0.3966543747_dp
+   dh42 = 0.5529291479_dp
+
+   dh13 = 0.0_dp
+   dh23 = 0.0_dp
+   dh33 = 0.0_dp
+   dh43 = 0.5529291479_dp
+
+   dh14 = 0.0_dp
+   dh24 = 0.0_dp
+   dh34 = 0.0_dp
+   dh44 = 0.0_dp
 
 end subroutine set_imex_params
 

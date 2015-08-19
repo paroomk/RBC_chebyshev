@@ -33,8 +33,6 @@ D2Ty1 = -(pi**2.0_dp/4.0_dp)*Ty1
 
 Bml(:,2) = cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp)
 
-Aml = 10.0_dp*Bml
-
 end subroutine initial_conditions
 
 end module makeICs

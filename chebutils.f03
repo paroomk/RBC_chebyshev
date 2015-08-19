@@ -162,6 +162,7 @@ subroutine makeVTM(VM, TM, DVM, DTM, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   real(dp), allocatable, dimension(:,:)              :: y, y2, y3, ones
   real(dp),              dimension(4,4)              :: CM1
   real(dp),              dimension(2,2)              :: CM2
+  real(dp)                                           :: at, ab, bt, bb
   integer                                            :: i, j
   integer                                            :: NC, NP
   integer                                            :: info
@@ -254,6 +255,15 @@ subroutine makeVTM(VM, TM, DVM, DTM, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
 
   ipiv = 0
 
+  ! Boundary conditions
+  ! rigid-rigid: at = ab = 1.0
+  ! free-free  : at = ab = 0.0
+  ! rigid-free : at = 0.0, ab = 1.0
+  at = 0.0_dp
+  ab = 0.0_dp
+  bt = 1.0_dp - at
+  bb = 1.0_dp - ab
+
   ! Make the expansion (Cjm) and projection (Pmj) matrices
   call makeTP(Cjmi, Pmji, NC+4, NP)
 
@@ -281,17 +291,31 @@ subroutine makeVTM(VM, TM, DVM, DTM, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
 ! Stokes equation
 
   ! Get matrix of boundary terms
-  CM1 = reshape([Tpm1(1,1)  , Tpm1(2,1)  , 0.0_dp     , 0.0_dp     , & ! 1st col
-               & I1Tpm1(1,1), I1Tpm1(2,1), Tpm1(1,1)  , Tpm1(2,1)  , & ! 2nd col
-               & I2Tpm1(1,1), I2Tpm1(2,1), I1Tpm1(1,1), I1Tpm1(2,1), & ! 3rd col
-               & I3Tpm1(1,1), I3Tpm1(2,1), I2Tpm1(1,1), I2Tpm1(2,1)] & ! 4th col
-       &,shape(CM1))
+  CM1(1,1) = Tpm1(1,1)
+  CM1(2,1) = Tpm1(2,1)
+  CM1(3,1) = 0.0_dp
+  CM1(4,1) = 0.0_dp
+
+  CM1(1,2) = I1Tpm1(1,1)
+  CM1(2,2) = I1Tpm1(2,1)
+  CM1(3,2) = at*Tpm1(1,1)
+  CM1(4,2) = ab*Tpm1(2,1)
+
+  CM1(1,3) = I2Tpm1(1,1)
+  CM1(2,3) = I2Tpm1(2,1)
+  CM1(3,3) = at*I1Tpm1(1,1) + bt*Tpm1(1,1)
+  CM1(4,3) = ab*I1Tpm1(2,1) + bb*Tpm1(2,1)
+
+  CM1(1,4) = I3Tpm1(1,1)
+  CM1(2,4) = I3Tpm1(2,1)
+  CM1(3,4) = at*I2Tpm1(1,1) + bt*I1Tpm1(1,1)
+  CM1(4,4) = ab*I1Tpm1(2,1) + bb*I1Tpm1(2,1)
 
   ! Form RHS of boundary terms
   IbcV(1,:) = I4Tpm1(1,1:NC) ! v(1)
   IbcV(2,:) = I4Tpm1(2,1:NC) ! v(-1)
-  IbcV(3,:) = I3Tpm1(1,1:NC) ! Dv(1)
-  IbcV(4,:) = I3Tpm1(2,1:NC) ! Dv(-1)
+  IbcV(3,:) = at*I3Tpm1(1,1:NC) + bt*I2Tpm1(1,1:NC) ! at*Dv(1) + (1-at)*D2v(1)
+  IbcV(4,:) = ab*I3Tpm1(2,1:NC) + bb*I2Tpm1(2,1:NC) ! ab*Dv(-1) + (1-ab)*D2v(-1)
 
   ! Solve for boundary matrix: B = inv(CM1)*Ibc
   call dgesv(4, NC, -CM1, 4, ipiv, IbcV, 4, info)
@@ -338,7 +362,7 @@ end subroutine makeVTM
 
 !::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM,TM)
+subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM,TM)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   !
@@ -356,6 +380,7 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM,TM)
   !    GPD2VM: Projected trial function for 2nd derivative of velocity (NC X NC)
   !    GPD4VM: Projected trial function for 4th derivative of velocity (NC X NC)
   !    GPTM  : Projected trial function for temperature in v-equation (NC X NC)
+  !    PVM   : Projected trial function for velocity in temperature equation (NC X NC)
   !    PTM   : Projected trial function for temperature (NC X NC)
   !    PD2TM : Projected trial function for 2nd derivative of temperature (NC X NC)
   !    PVEL  : Galerkin projector for vertical-velocity equation (NC X NP)
@@ -367,7 +392,7 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM,TM)
   real(dp),              dimension(:,:), intent(in)  :: VM, D2VM, TM
   real(dp), allocatable, dimension(:,:), intent(out) :: GPVM, GPD2VM
   real(dp), allocatable, dimension(:,:), intent(out) :: GPD4VM, GPTM
-  real(dp), allocatable, dimension(:,:), intent(out) :: PTM, PD2TM, PVEL
+  real(dp), allocatable, dimension(:,:), intent(out) :: PVM, PTM, PD2TM, PVEL
   real(dp), allocatable, dimension(:)                :: y
   integer              , dimension(2)                :: sz
   integer                                            :: NC, NP
@@ -378,11 +403,12 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM,TM)
   NC = sz(1)
   NP = sz(2)
 
-  allocate(PTM(NC,NC)   , PD2TM(NC,NC) , stat=alloc_err)
-  allocate(GPTM(NC,NC)  , GPVM(NC,NC)  , stat=alloc_err)
-  allocate(GPD2VM(NC,NC), GPD4VM(NC,NC), stat=alloc_err)
-  allocate(PVEL(NC,NP)                 , stat=alloc_err)
-  allocate(y(NP)                       , stat=alloc_err)
+  allocate(PVM(NC,NC), PTM(NC,NC), PD2TM(NC,NC), stat=alloc_err)
+  allocate(GPTM(NC,NC)  , GPVM(NC,NC)          , stat=alloc_err)
+  allocate(GPD2VM(NC,NC), GPD4VM(NC,NC)        , stat=alloc_err)
+  allocate(PVEL(NC,NP)                         , stat=alloc_err)
+  allocate(y(NP)                               , stat=alloc_err)
+  PVM    = 0.0_dp
   PTM    = 0.0_dp
   PD2TM  = 0.0_dp
   GPTM   = 0.0_dp
@@ -409,6 +435,7 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM,TM)
 
   ! Projectors for temperature equation
 
+  call dgemm('n', 'n', NC, NC, NP, scale1, Pmj , NC, VM  , NP, scale2, PVM   , NC)
   call dgemm('n', 'n', NC, NC, NP, scale1, Pmj , NC, TM  , NP, scale2, PTM   , NC)
   forall(j = 1:NC) PD2TM(j,j) = 1.0_dp ! Just the identity matrix
 
