@@ -31,7 +31,7 @@ D2Ty1 = 0.0_dp
 Ty1   = amp*cos(pi*y/2.0_dp)
 D2Ty1 = -(pi**2.0_dp/4.0_dp)*Ty1
 
-Bml(:,2) = cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp)
+Bml(:,2) = -2.0_dp*cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp)
 
 end subroutine initial_conditions
 

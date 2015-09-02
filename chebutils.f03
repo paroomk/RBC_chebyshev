@@ -121,7 +121,7 @@ end subroutine chebint
 
 !::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-subroutine makeVTM(VM, TM, DVM, DTM, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
+subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   !
@@ -149,7 +149,7 @@ subroutine makeVTM(VM, TM, DVM, DTM, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   integer,                               intent(in)  :: NCin
   integer, optional,                     intent(in)  :: NPin
   real(dp), allocatable, dimension(:,:), intent(out) :: TM, VM 
-  real(dp), allocatable, dimension(:,:), intent(out) :: DVM, DTM
+  real(dp), allocatable, dimension(:,:), intent(out) :: DVM, DTM, DTMb
   real(dp), allocatable, dimension(:,:), intent(out) :: D2VM, D3VM
   real(dp), allocatable, dimension(:,:), intent(out) :: Cjm, Pmj
   real(dp), allocatable, dimension(:,:)              :: I1T, I2T, I3T, I4T
@@ -204,9 +204,18 @@ subroutine makeVTM(VM, TM, DVM, DTM, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   allocate(TM(NP,NC)  , DTM(NP,NC) , stat=alloc_err)
   allocate(VM(NP,NC)  , DVM(NP,NC) , stat=alloc_err)
   allocate(D2VM(NP,NC), D3VM(NP,NC), stat=alloc_err)
+  allocate(DTMb(1,NC)              , stat=alloc_err)
 
-  Cjm = 0.0_dp
-  Pmj = 0.0_dp
+  TM   = 0.0_dp
+  DTM  = 0.0_dp
+  VM   = 0.0_dp
+  DVM  = 0.0_dp
+  D2VM = 0.0_dp
+  D3VM = 0.0_dp
+  DTMb = 0.0_dp
+
+  Cjm  = 0.0_dp
+  Pmj  = 0.0_dp
 
   Cjmi = 0.0_dp
   Pmji = 0.0_dp
@@ -343,8 +352,8 @@ subroutine makeVTM(VM, TM, DVM, DTM, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
        &,shape(CM2))
 
   ! Form RHS of boundary terms
-  IbcT(1,:) = I2Tpm1(1,1:NC) ! v(1)
-  IbcT(2,:) = I2Tpm1(2,1:NC) ! v(-1)
+  IbcT(1,:) = I2Tpm1(1,1:NC) ! T(1)
+  IbcT(2,:) = I2Tpm1(2,1:NC) ! T(-1)
 
   ! Solve for boundary matrix: B = inv(CM1)*Ibc
   call dgesv(2, NC, -CM2, 2, ipiv, IbcT, 2, info)
@@ -352,8 +361,10 @@ subroutine makeVTM(VM, TM, DVM, DTM, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   cT0(1,:) = IbcT(1,:)
   cT1(1,:) = IbcT(2,:)
 
-  DTM = I1T(:,1:NC) + matmul(ones, cT1)
-  TM  = I2T(:,1:NC) + matmul(ones, cT0) + matmul(y, cT1)
+  DTM  = I1T(:,1:NC) + matmul(ones, cT1)
+  TM   = I2T(:,1:NC) + matmul(ones, cT0) + matmul(y, cT1)
+
+  DTMb(1,:) = I1Tpm1(1,1:NC) + cT1(1,:) ! Need this for Nu calculation
 
   Cjm = Cjmi(:,1:NC)
   Pmj = Pmji(1:NC,:)
@@ -362,7 +373,7 @@ end subroutine makeVTM
 
 !::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM,TM)
+subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,PDTM,PD2TM,PVEL, Pmj,Cjm,VM,DVM,D2VM,TM,DTM)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   !
@@ -373,15 +384,21 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM
   !    Cjm :  Chebyshev expansion matrix (NP X NC)
   !    VM  :  Chebyshev-Galerkin trial function for velocity    (NP X NC)
   !    TM  :  Chebyshev-Galerkin trial function for temperature (NP X NC)
+  !    DVM :  Chebyshev-Galerkin trial function for first derivative of velocity
+  !           (NP X NC)
   !    D2VM:  Chebyshev-Galerkin trial function for second derivative of
   !           velocity (NP X NC)
+  !    DTM :  Chebyshev-Galerkin trial function for first derivative of
+  !           temperature (NP X NC)
   ! OUTPUT:
   !    GPVM  : Projected trial function for velocity (NC X NC)
   !    GPD2VM: Projected trial function for 2nd derivative of velocity (NC X NC)
   !    GPD4VM: Projected trial function for 4th derivative of velocity (NC X NC)
   !    GPTM  : Projected trial function for temperature in v-equation (NC X NC)
   !    PVM   : Projected trial function for velocity in temperature equation (NC X NC)
+  !    PDVM  : Projected trial function for first derivative of velocity (NC X NC)
   !    PTM   : Projected trial function for temperature (NC X NC)
+  !    PDTM  : Projected trial function for first derivative of temperature (NC X NC)
   !    PD2TM : Projected trial function for 2nd derivative of temperature (NC X NC)
   !    PVEL  : Galerkin projector for vertical-velocity equation (NC X NP)
   !
@@ -390,26 +407,29 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM
 
   real(dp),              dimension(:,:), intent(in)  :: Pmj, Cjm
   real(dp),              dimension(:,:), intent(in)  :: VM, D2VM, TM
+  real(dp),              dimension(:,:), intent(in)  :: DVM, DTM
   real(dp), allocatable, dimension(:,:), intent(out) :: GPVM, GPD2VM
   real(dp), allocatable, dimension(:,:), intent(out) :: GPD4VM, GPTM
   real(dp), allocatable, dimension(:,:), intent(out) :: PVM, PTM, PD2TM, PVEL
+  real(dp), allocatable, dimension(:,:), intent(out) :: PDVM, PDTM
   real(dp), allocatable, dimension(:)                :: y
-  integer              , dimension(2)                :: sz
   integer                                            :: NC, NP
   integer                                            :: j
   real(dp), parameter                                :: scale1=1.0_dp, scale2=0.0_dp
 
-  sz = shape(Pmj)
-  NC = sz(1)
-  NP = sz(2)
+  NC = size(Pmj,1)
+  NP = size(Pmj,2)
 
   allocate(PVM(NC,NC), PTM(NC,NC), PD2TM(NC,NC), stat=alloc_err)
+  allocate(PDVM(NC,NC), PDTM(NC,NC)            , stat=alloc_err)
   allocate(GPTM(NC,NC)  , GPVM(NC,NC)          , stat=alloc_err)
   allocate(GPD2VM(NC,NC), GPD4VM(NC,NC)        , stat=alloc_err)
   allocate(PVEL(NC,NP)                         , stat=alloc_err)
   allocate(y(NP)                               , stat=alloc_err)
   PVM    = 0.0_dp
+  PDVM   = 0.0_dp
   PTM    = 0.0_dp
+  PDTM   = 0.0_dp
   PD2TM  = 0.0_dp
   GPTM   = 0.0_dp
   GPVM   = 0.0_dp
@@ -433,10 +453,12 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PTM,PD2TM,PVEL, Pmj,Cjm,VM,D2VM
   call dgemm('n', 'n', NC, NC, NP, scale1, PVEL, NC, D2VM, NP, scale2, GPD2VM, NC)
   call dgemm('n', 'n', NC, NC, NP, scale1, PVEL, NC, Cjm , NP, scale2, GPD4VM, NC)
 
-  ! Projectors for temperature equation
+  ! Projectors for temperature equation and continuity equation
+  call dgemm('n', 'n', NC, NC, NP, scale1, Pmj , NC, VM   , NP, scale2, PVM , NC)
+  call dgemm('n', 'n', NC, NC, NP, scale1, Pmj , NC, TM   , NP, scale2, PTM , NC)
+  call dgemm('n', 'n', NC, NC, NP, scale1, Pmj , NC, DVM  , NP, scale2, PDVM, NC)
+  call dgemm('n', 'n', NC, NC, NP, scale1, Pmj , NC, DTM  , NP, scale2, PDTM, NC)
 
-  call dgemm('n', 'n', NC, NC, NP, scale1, Pmj , NC, VM  , NP, scale2, PVM   , NC)
-  call dgemm('n', 'n', NC, NC, NP, scale1, Pmj , NC, TM  , NP, scale2, PTM   , NC)
   forall(j = 1:NC) PD2TM(j,j) = 1.0_dp ! Just the identity matrix
 
 end subroutine projectVT
