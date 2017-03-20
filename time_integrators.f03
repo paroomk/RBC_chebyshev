@@ -93,9 +93,12 @@ do ! while time < t_final
 
    ! Do some computations using data from previous time step
 
-   ! Bring to physical space to track decay rate
-   call decay(maxVyx, maxTyx, VM, TM, tstep)
-   write(1500, fmt=3000) time, maxVyx, maxTyx
+   if (mod(tstep,100) == 0) then
+      !write(*,*) "time = ", time, "dt = ", dt
+      ! Bring to physical space to track decay rate
+      call decay(maxVyx, maxTyx, VM, TM, tstep)
+      !write(1500, fmt=3000) time, maxVyx, maxTyx
+   end if
 
    ! Now move on to next time step
    if (time == t_final) then
