@@ -34,18 +34,18 @@ real(dp)                                 :: amp             ! Initial Temperatur
 real(dp)                                 :: Nuss            ! Nusselt number
 real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
-real(dp), parameter                      :: Ra = 4.0e6_dp, Pr = 7.0_dp
-real(dp), parameter                      :: t_final = 5.0_dp
-real(dp), parameter                      :: dt      = 0.00005_dp
+real(dp), parameter                      :: Ra = 5.0e3_dp, Pr = 7.0_dp
+real(dp), parameter                      :: t_final = 75.0_dp
+real(dp), parameter                      :: dt      = 0.01_dp
 
 !alpha = pi/(2.0_dp*sqrt(2.0))
 
 nu    = dsqrt(16.0_dp*Pr/Ra)
 kappa = dsqrt(16.0_dp/(Pr*Ra))
 
-NC = 130
+NC = 30
 NP = NC + 4
-NF = 128
+NF = 32
 
 !NC = 45
 !NP = NC + 4
