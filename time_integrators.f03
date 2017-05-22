@@ -15,7 +15,7 @@ use write_pack
 implicit none
 
 private
-public imex_rk, backward_euler, nonlinear_terms
+public imex_rk, backward_euler, nonlinear_terms, update_u, decay
 
 real(dp) :: c1, c2, c3
 real(dp) :: d11, d12, d13
@@ -66,34 +66,34 @@ allocate(K2hT(NC,NF2), K2hV(NC,NF2), stat=alloc_err)
 allocate(K3hT(NC,NF2), K3hV(NC,NF2), stat=alloc_err)
 allocate(K4hT(NC,NF2), K4hV(NC,NF2), stat=alloc_err)
 
-K1V = cmplx(0.0_dp, 0.0_dp)
-K2V = cmplx(0.0_dp, 0.0_dp)
-K3V = cmplx(0.0_dp, 0.0_dp)
+K1V = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K2V = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K3V = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
-K1T = cmplx(0.0_dp, 0.0_dp)
-K2T = cmplx(0.0_dp, 0.0_dp)
-K3T = cmplx(0.0_dp, 0.0_dp)
+K1T = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K2T = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K3T = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
-K1hV = cmplx(0.0_dp, 0.0_dp)
-K2hV = cmplx(0.0_dp, 0.0_dp)
-K3hV = cmplx(0.0_dp, 0.0_dp)
-K4hV = cmplx(0.0_dp, 0.0_dp)
+K1hV = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K2hV = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K3hV = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K4hV = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
-K1hT = cmplx(0.0_dp, 0.0_dp)
-K2hT = cmplx(0.0_dp, 0.0_dp)
-K3hT = cmplx(0.0_dp, 0.0_dp)
-K4hT = cmplx(0.0_dp, 0.0_dp)
+K1hT = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K2hT = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K3hT = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K4hT = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 time  = 0.0_dp
 tstep = 0
 
-open(unit=1500, file="maxval.txt", action="write", status="unknown", position="append")
+!open(unit=1500, file="maxval.txt", action="write", status="unknown", position="append")
 
 do ! while time < t_final
 
    ! Do some computations using data from previous time step
 
-   if (mod(tstep,100) == 0) then
+   if (mod(tstep,500) == 0) then
       !write(*,*) "time = ", time, "dt = ", dt
       ! Bring to physical space to track decay rate
       call decay(maxVyx, maxTyx, VM, TM, tstep)
@@ -140,7 +140,7 @@ do ! while time < t_final
 
 end do
 
-close(unit=1500)
+!close(unit=1500)
 
 2000 format(E25.16E3, E25.16E3          )
 3000 format(E25.16E3, E25.16E3, E25.16E3)
@@ -206,16 +206,16 @@ allocate(ipiv(NC)                    , stat=alloc_err)
 allocate(temp(NC)                    , stat=alloc_err)
 allocate(NLTml(NC,NF2), NLVml(NC,NF2), stat=alloc_err)
 
-K1hV  = cmplx(0.0_dp, 0.0_dp)
-K1hT  = cmplx(0.0_dp, 0.0_dp)
+K1hV  = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K1hT  = cmplx(0.0_dp, 0.0_dp, kind=dp)
 lhs   = 0.0_dp
 rhs   = 0.0_dp
 ups   = 0.0_dp
 Kre   = 0.0_dp
 Kim   = 0.0_dp
-temp  = cmplx(0.0_dp, 0.0_dp)
-NLTml = cmplx(0.0_dp, 0.0_dp)
-NLVml = cmplx(0.0_dp, 0.0_dp)
+temp  = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLTml = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLVml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 ipiv  = 0
 
 call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml,Bml)
@@ -238,7 +238,7 @@ do i = 1,NF2
    
    ! Get K1hV
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
-   K1hV(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   K1hV(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Compute PVM*rhs
    call dgemv('n', NC, NC, scale1, PVM, NC, real (Aml(:,i)), incx, scale2, Kre, incy)
@@ -250,7 +250,7 @@ do i = 1,NF2
    ! Get K1hT
    ups = PTM ! Use ups as a temp array for now
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
-   K1hT(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   K1hT(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 end do
 
 end subroutine initrk
@@ -291,7 +291,8 @@ real(dp)   , allocatable, dimension(:,:)              :: lap
 real(dp)                                              :: alpha, wave, wave2
 integer                                               :: NC, NF2, NP, NF
 integer                                               :: NF_cut, NC_cut
-integer                                               :: i,j,l
+integer                                               :: i,j
+real(dp)                                              :: l
 
 ! LAPACK and BLAS variables
 real(dp), parameter :: scale1=1.0_dp, scale2=0.0_dp
@@ -315,11 +316,11 @@ allocate(lap(NP,NC)        , stat=alloc_err)
 allocate(lapV(NP,NF2)      , stat=alloc_err)
 allocate(lapU(NP,NF2)      , stat=alloc_err)
 
-NLVml = cmplx(0.0_dp, 0.0_dp)
-NLTml = cmplx(0.0_dp, 0.0_dp)
-DTml  = cmplx(0.0_dp, 0.0_dp)
-lapV  = cmplx(0.0_dp, 0.0_dp)
-lapU  = cmplx(0.0_dp, 0.0_dp)
+NLVml = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLTml = cmplx(0.0_dp, 0.0_dp, kind=dp)
+DTml  = cmplx(0.0_dp, 0.0_dp, kind=dp)
+lapV  = cmplx(0.0_dp, 0.0_dp, kind=dp)
+lapU  = cmplx(0.0_dp, 0.0_dp, kind=dp)
 Uiyx  = 0.0_dp
 DTyx  = 0.0_dp
 NLVyx = 0.0_dp
@@ -339,8 +340,8 @@ do i = 1,NF2
      lapU(:,i)    = CI*matmul(lap, Aiml(:,i))/wave
      fft1_ml(:,i) = CI*Aiml(:,i)/wave
    else
-     lapU(:,i)    = cmplx(0.0_dp, 0.0_dp)
-     fft1_ml(:,i) = cmplx(0.0_dp, 0.0_dp)
+     lapU(:,i)    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+     fft1_ml(:,i) = cmplx(0.0_dp, 0.0_dp, kind=dp)
    end if
 end do
 
@@ -391,8 +392,8 @@ do i = 1,NF2
    l = abs(wave)/alpha
    do j = 1,NC
       if ((l >= NF_cut) .or. (j >= NC_cut)) then
-         NLTml(j,i) = cmplx(0.0_dp, 0.0_dp)
-         NLVml(j,i) = cmplx(0.0_dp, 0.0_dp)
+         NLTml(j,i) = cmplx(0.0_dp, 0.0_dp, kind=dp)
+         NLVml(j,i) = cmplx(0.0_dp, 0.0_dp, kind=dp)
       else
          NLVml(j,i) = CI*wave*NLVml(j,i)
       end if
@@ -485,10 +486,10 @@ allocate(temp(NC)                    , stat=alloc_err)
 allocate(Aml1(NC,NF2), Bml1(NC,NF2)  , stat=alloc_err)
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
 
-K1T     = cmplx(0.0_dp, 0.0_dp)
-K1V     = cmplx(0.0_dp, 0.0_dp)
-K2hV    = cmplx(0.0_dp, 0.0_dp)
-K2hT    = cmplx(0.0_dp, 0.0_dp)
+K1T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K1V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K2hV    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K2hT    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 lhs     = 0.0_dp
 rhs     = 0.0_dp
 tempmat = 0.0_dp
@@ -499,11 +500,11 @@ Kim     = 0.0_dp
 ore     = 0.0_dp
 oim     = 0.0_dp
 ipiv    = 0
-temp    = cmplx(0.0_dp, 0.0_dp)
-Aml1    = cmplx(0.0_dp, 0.0_dp)
-Bml1    = cmplx(0.0_dp, 0.0_dp)
-NLVml   = cmplx(0.0_dp, 0.0_dp)
-NLTml   = cmplx(0.0_dp, 0.0_dp)
+temp    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+Aml1    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+Bml1    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLVml   = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLTml   = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 do i = 1,NF2
    ! Vertical velocity equation
@@ -534,7 +535,7 @@ do i = 1,NF2
    
    ! Get Aml_1
    call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
-   Aml1(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   Aml1(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Get K1 for vertical velocity equation (avoids ever forming inv(upsilon))
    call dgemv('n', NC, NC, scale1, tempmat, NC, rhs(:,1), incx, scale2, Kre, incy)
@@ -544,7 +545,7 @@ do i = 1,NF2
    tempmat  = ups
    call dgesv(NC, 2, tempmat, NC, ipiv, rhs, NC, info)
 
-   K1V(:,i) = nu*cmplx(rhs(:,1), rhs(:,2))
+   K1V(:,i) = nu*cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Temperature equation
    lhs  = (1.0_dp + dt*d11*kappa*wave2)*PTM - dt*d11*kappa*eye
@@ -558,12 +559,12 @@ do i = 1,NF2
    Kmat = kappa*(-wave2*PTM + eye)
    call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,1), incx, scale2, Kre, incy)
    call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,2), incx, scale2, Kim, incy)
-   K1T(:,i) = cmplx(Kre, Kim)
+   K1T(:,i) = cmplx(Kre, Kim, kind=dp)
 
    ! Complete formation of Bml_1
    call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,1), incx, scale2, Kre, incy)
    call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,2), incx, scale2, Kim, incy)
-   Bml1(:,i) = cmplx(Kre, Kim)
+   Bml1(:,i) = cmplx(Kre, Kim, kind=dp)
 end do
 
 call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml1,Bml1)
@@ -581,7 +582,7 @@ do i = 1,NF2
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
-   K2hT(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   K2hT(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Vertical velocity equation
    call dgemv('n', NC, NC, scale1, GPTM, NC, real (Bml1(:,i)), incx, scale2, Kre, incy)
@@ -592,7 +593,7 @@ do i = 1,NF2
 
    ups = -wave2*GPVM + GPD2VM
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
-   K2hV(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   K2hV(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 end do
 
 end subroutine stage1
@@ -687,10 +688,10 @@ allocate(temp(NC)                    , stat=alloc_err)
 allocate(Aml2(NC,NF2), Bml2(NC,NF2)  , stat=alloc_err)
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
 
-K2T     = cmplx(0.0_dp, 0.0_dp)
-K2V     = cmplx(0.0_dp, 0.0_dp)
-K3hV    = cmplx(0.0_dp, 0.0_dp)
-K3hT    = cmplx(0.0_dp, 0.0_dp)
+K2T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K2V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K3hV    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K3hT    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 lhs     = 0.0_dp
 rhs     = 0.0_dp
 tempmat = 0.0_dp
@@ -701,11 +702,11 @@ Kim     = 0.0_dp
 ore     = 0.0_dp
 oim     = 0.0_dp
 ipiv    = 0
-temp    = cmplx(0.0_dp, 0.0_dp)
-Aml2    = cmplx(0.0_dp, 0.0_dp)
-Bml2    = cmplx(0.0_dp, 0.0_dp)
-NLVml   = cmplx(0.0_dp, 0.0_dp)
-NLTml   = cmplx(0.0_dp, 0.0_dp)
+temp    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+Aml2    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+Bml2    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLVml   = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLTml   = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 do i = 1,NF2
    ! Vertical velocity equation
@@ -736,7 +737,7 @@ do i = 1,NF2
    
    ! Get Aml_2
    call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
-   Aml2(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   Aml2(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Get K2 for vertical velocity equation (avoids ever forming inv(upsilon))
    call dgemv('n', NC, NC, scale1, tempmat, NC, rhs(:,1), incx, scale2, Kre, incy)
@@ -746,7 +747,7 @@ do i = 1,NF2
    tempmat  = ups
    call dgesv(NC, 2, tempmat, NC, ipiv, rhs, NC, info)
 
-   K2V(:,i) = nu*cmplx(rhs(:,1), rhs(:,2))
+   K2V(:,i) = nu*cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Temperature equation
    lhs  = (1.0_dp + dt*d22*kappa*wave2)*PTM - dt*d22*kappa*eye
@@ -760,12 +761,12 @@ do i = 1,NF2
    Kmat = kappa*(-wave2*PTM + eye)
    call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,1), incx, scale2, Kre, incy)
    call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,2), incx, scale2, Kim, incy)
-   K2T(:,i) = cmplx(Kre, Kim)
+   K2T(:,i) = cmplx(Kre, Kim, kind=dp)
 
    ! Complete formation of Bml_2
    call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,1), incx, scale2, Kre, incy)
    call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,2), incx, scale2, Kim, incy)
-   Bml2(:,i) = cmplx(Kre, Kim)
+   Bml2(:,i) = cmplx(Kre, Kim, kind=dp)
 end do
 
 call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml2,Bml2)
@@ -783,7 +784,7 @@ do i = 1,NF2
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
-   K3hT(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   K3hT(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Vertical velocity equation
    call dgemv('n', NC, NC, scale1, GPTM, NC, real (Bml2(:,i)), incx, scale2, Kre, incy)
@@ -794,7 +795,7 @@ do i = 1,NF2
 
    ups = -wave2*GPVM + GPD2VM
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
-   K3hV(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   K3hV(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 end do
 
 end subroutine stage2
@@ -893,10 +894,10 @@ allocate(temp(NC)                    , stat=alloc_err)
 allocate(Aml3(NC,NF2), Bml3(NC,NF2)  , stat=alloc_err)
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
 
-K3T     = cmplx(0.0_dp, 0.0_dp)
-K3V     = cmplx(0.0_dp, 0.0_dp)
-K4hV    = cmplx(0.0_dp, 0.0_dp)
-K4hT    = cmplx(0.0_dp, 0.0_dp)
+K3T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K3V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K4hV    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K4hT    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 lhs     = 0.0_dp
 rhs     = 0.0_dp
 tempmat = 0.0_dp
@@ -907,11 +908,11 @@ Kim     = 0.0_dp
 ore     = 0.0_dp
 oim     = 0.0_dp
 ipiv    = 0
-temp    = cmplx(0.0_dp, 0.0_dp)
-Aml3    = cmplx(0.0_dp, 0.0_dp)
-Bml3    = cmplx(0.0_dp, 0.0_dp)
-NLVml   = cmplx(0.0_dp, 0.0_dp)
-NLTml   = cmplx(0.0_dp, 0.0_dp)
+temp    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+Aml3    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+Bml3    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLVml   = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLTml   = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 do i = 1,NF2
    ! Vertical velocity equation
@@ -942,7 +943,7 @@ do i = 1,NF2
    
    ! Get Aml_3
    call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
-   Aml3(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   Aml3(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Get K3 for vertical velocity equation (avoids ever forming inv(upsilon))
    call dgemv('n', NC, NC, scale1, tempmat, NC, rhs(:,1), incx, scale2, Kre, incy)
@@ -952,7 +953,7 @@ do i = 1,NF2
    tempmat  = ups
    call dgesv(NC, 2, tempmat, NC, ipiv, rhs, NC, info)
 
-   K3V(:,i) = nu*cmplx(rhs(:,1), rhs(:,2))
+   K3V(:,i) = nu*cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Temperature equation
    lhs  = (1.0_dp + dt*d33*kappa*wave2)*PTM - dt*d33*kappa*eye
@@ -966,12 +967,12 @@ do i = 1,NF2
    Kmat = kappa*(-wave2*PTM + eye)
    call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,1), incx, scale2, Kre, incy)
    call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,2), incx, scale2, Kim, incy)
-   K3T(:,i) = cmplx(Kre, Kim)
+   K3T(:,i) = cmplx(Kre, Kim, kind=dp)
 
    ! Complete formation of Bml_3
    call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,1), incx, scale2, Kre, incy)
    call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,2), incx, scale2, Kim, incy)
-   Bml3(:,i) = cmplx(Kre, Kim)
+   Bml3(:,i) = cmplx(Kre, Kim, kind=dp)
 end do
 
 call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml3,Bml3)
@@ -989,7 +990,7 @@ do i = 1,NF2
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
-   K4hT(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   K4hT(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
    ! Vertical velocity equation
    call dgemv('n', NC, NC, scale1, GPTM, NC, real (Bml3(:,i)), incx, scale2, Kre, incy)
@@ -1000,7 +1001,7 @@ do i = 1,NF2
 
    ups = -wave2*GPVM + GPD2VM
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
-   K4hV(:,i) = cmplx(rhs(:,1), rhs(:,2))
+   K4hV(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 end do
 
 end subroutine stage3
@@ -1056,9 +1057,9 @@ do i = 1,NF2
       call dgemv('n', NP, NC, scale1, DVM,  NP, aimag(Aml(:,i)), incx, scale2, oim, incy)
       call dgemv('n', NC, NP, scale1, Pmj,  NC, ore, incx, scale2, Kre, incy)
       call dgemv('n', NC, NP, scale1, Pmj,  NC, oim, incx, scale2, Kim, incy)
-      Uml(:,i) = CI*cmplx(Kre, Kim)/wave
+      Uml(:,i) = CI*cmplx(Kre, Kim, kind=dp)/wave
    else
-      Uml(:,i) = cmplx(0.0_dp, 0.0_dp) ! No mean flow for now
+      Uml(:,i) = cmplx(0.0_dp, 0.0_dp, kind=dp) ! No mean flow for now
    end if
 
 end do
@@ -1090,8 +1091,8 @@ NP  = size(Tyx, 1)
 NF2 = NF/2 + 1
 
 allocate(temp1(NC,NF2), temp2(NC,NF2), stat=alloc_err)
-temp1 = cmplx(0.0_dp, 0.0_dp)
-temp2 = cmplx(0.0_dp, 0.0_dp)
+temp1 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+temp2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 ! Bring fields to physical space
 ! temporary storage because ifft overwrites input arrays!
@@ -1154,11 +1155,11 @@ upsilon   = 0.0_dp
 lhs       = 0.0_dp
 rhs       = 0.0_dp
 ipiv      = 0
-temprhs   = cmplx(0.0_dp, 0.0_dp)
-rhsT_hold = cmplx(0.0_dp, 0.0_dp)
-rhsT_hold = cmplx(0.0_dp, 0.0_dp)
-NLTml     = cmplx(0.0_dp, 0.0_dp)
-NLVml     = cmplx(0.0_dp, 0.0_dp)
+temprhs   = cmplx(0.0_dp, 0.0_dp, kind=dp)
+rhsT_hold = cmplx(0.0_dp, 0.0_dp, kind=dp)
+rhsT_hold = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLTml     = cmplx(0.0_dp, 0.0_dp, kind=dp)
+NLVml     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 ! Initial time
 time  = 0.0_dp
@@ -1197,19 +1198,19 @@ do ! while time < t_final
       ! Compute the RHS
       call dgemv('n', NC, NC, scale1, upsilon, NC, real (Aml(:,i)), incx, scale2, rhs(:,1), incy)
       call dgemv('n', NC, NC, scale1, upsilon, NC, aimag(Aml(:,i)), incx, scale2, rhs(:,2), incy)
-      temprhs = cmplx(rhs(:,1), rhs(:,2))
+      temprhs = cmplx(rhs(:,1), rhs(:,2), kind=dp)
       call dgemv('n', NC, NC, scale1, GPTM, NC, real (Bml(:,i)), incx, scale2, rhs(:,1), incy)
       call dgemv('n', NC, NC, scale1, GPTM, NC, aimag(Bml(:,i)), incx, scale2, rhs(:,2), incy)
-      rhsV_hold(:,i) = temprhs - wave2*dt*cmplx(rhs(:,1), rhs(:,2))
+      rhsV_hold(:,i) = temprhs - wave2*dt*cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
       ! Temperature Equation
       ! Compute the RHS
       call dgemv('n', NC, NC, scale1, PTM, NC, real (Bml(:,i)), incx, scale2, rhs(:,1), incy)
       call dgemv('n', NC, NC, scale1, PTM, NC, aimag(Bml(:,i)), incx, scale2, rhs(:,2), incy)
-      temprhs = cmplx(rhs(:,1), rhs(:,2))
+      temprhs = cmplx(rhs(:,1), rhs(:,2), kind=dp)
       call dgemv('n', NC, NC, scale1, PVM, NC, real (Aml(:,i)), incx, scale2, rhs(:,1), incy)
       call dgemv('n', NC, NC, scale1, PVM, NC, aimag(Aml(:,i)), incx, scale2, rhs(:,2), incy)
-      rhsT_hold(:,i) = temprhs + dt*cmplx(rhs(:,1), rhs(:,2))
+      rhsT_hold(:,i) = temprhs + dt*cmplx(rhs(:,1), rhs(:,2), kind=dp)
    end do
 
    call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml,Bml)
@@ -1227,7 +1228,7 @@ do ! while time < t_final
       ! Solve for the solution at next time step
       call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
       ! Update solution
-      Aml(:,i) = cmplx(rhs(:,1), rhs(:,2))
+      Aml(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 
       ! Temperature equation
       lhs = (1.0_dp + kappa*dt*wave2)*PTM - kappa*dt*eye
@@ -1236,7 +1237,7 @@ do ! while time < t_final
       ! Solve for solution at next time
       call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
       ! Update solution
-      Bml(:,i) = cmplx(rhs(:,1), rhs(:,2))
+      Bml(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
    end do
 
 end do
