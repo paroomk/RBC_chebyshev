@@ -13,7 +13,7 @@ use makeICs
 use chebutils
 use fftw
 use write_pack
-use time_integrators, only: imex_rk, backward_euler
+use time_integrators, only: imex_rk, backward_euler, update_u, decay
 use statutils, only: Nusselt 
 
 ! Set up basic problem parameters and fields
@@ -29,24 +29,35 @@ real(dp), allocatable, dimension(:,:)    :: GPD2VM          ! Projected Galerkin
 real(dp), allocatable, dimension(:,:)    :: GPD4VM          ! Projected Galerkin for v-eq
 real(dp), allocatable, dimension(:,:)    :: PVEL            ! Projector for v-eq
 real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
-real(dp)                                 :: amp             ! Initial Temperature
-                                                            ! amplitude
+real(dp)                                 :: amp             ! Initial Temperature amplitude
+real(dp)                                 :: mm1, mm2
 real(dp)                                 :: Nuss            ! Nusselt number
 real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
-real(dp), parameter                      :: Ra = 5.0e3_dp, Pr = 7.0_dp
-real(dp), parameter                      :: t_final = 75.0_dp
-real(dp), parameter                      :: dt      = 0.01_dp
+real(dp), parameter                      :: Ra = 1.0e7_dp, Pr = 7.0_dp
+real(dp), parameter                      :: t_final = 100.0_dp
+real(dp), parameter                      :: dt      = 0.00025_dp
+
+logical                                  :: read_ICs = .false.
+character(10)                            :: citer
+character(9)                             :: fiter
 
 !alpha = pi/(2.0_dp*sqrt(2.0))
 
 nu    = dsqrt(16.0_dp*Pr/Ra)
 kappa = dsqrt(16.0_dp/(Pr*Ra))
 
-NC = 30
-NP = NC + 4
-NF = 32
+! Ra = 4.0e+06
+!NC = 100
+!NP = NC + 4
+!NF = 128
 
+! Ra = 4.0e+06
+NC = 100
+NP = NC + 4
+NF = 128
+
+! Original params
 !NC = 45
 !NP = NC + 4
 !NF = 32
@@ -68,21 +79,21 @@ call fft_utils(NP,NC,NF)
 
 Bmx = 0.0_dp
 Tyx = 0.0_dp
-Bml = cmplx(0.0_dp, 0.0_dp)
+Bml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 Amx = 0.0_dp
 Vyx = 0.0_dp
-Aml = cmplx(0.0_dp, 0.0_dp)
+Aml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 Umx = 0.0_dp
 Uyx = 0.0_dp
-Uml = cmplx(0.0_dp, 0.0_dp)
+Uml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 fft1_mx = 0.0_dp
-fft1_ml = cmplx(0.0_dp, 0.0_dp)
+fft1_ml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 fft1_yx = 0.0_dp
-fft1_yl = cmplx(0.0_dp, 0.0_dp)
+fft1_yl = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 ! Allocate expansion-projection matrices
 allocate(Cjm(NP,NC) , stat=alloc_err)
@@ -147,9 +158,42 @@ call write_out_mat(y, "y")
 ! Get the projected Galerkin functions
 call projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,PDTM,PD2TM,PVEL, Pmj,Cjm,VM,DVM,D2VM,TM,DTM)
 
-! Create some initial conditions
-amp = 0.03_dp
-call initial_conditions(Pmj,y,amp,NC)
+! Create some initial conditions or read in initial values
+if (read_ICs) then
+   ! Read the fields in (in physical space)
+   open(unit=2, file="TICs.txt")
+   open(unit=3, file="VICs.txt")
+   read(2,*) ((Tyx(jj,ii), ii=1,NF), jj=1,NP)
+   read(3,*) ((Vyx(jj,ii), ii=1,NF), jj=1,NP)
+   close(2)
+   close(3)
+   ! Now start bringing them to Chebyshev-Fourier space
+   Bmx = matmul(Pmj, Tyx) ! y to Cheb
+   Amx = matmul(PVEL, Vyx) ! y to Cheb
+   call fftw_execute_dft_r2c(pf1, Bmx, fft1_ml) ! x to Fourier
+   Bml = fft1_ml / real(NF, dp)
+   call fftw_execute_dft_r2c(pf1, Amx, fft1_ml) ! x to Fourier
+   Aml = fft1_ml / real(NF, dp)
+   ! Need to compute u (horizontal velocity)
+   call update_u(Pmj, DVM)
+else 
+   amp = -0.03_dp * (pi / 2.0_dp)**2.0_dp
+   dx = 2.0_dp * pi / (alpha * NF)
+   ! Set ICs in physical space
+   do jj = 1,NP
+      do ii = 1,NF
+         x = real(ii-1, kind=dp)*dx - pi/alpha
+         Tyx(jj,ii) = amp*cos(pi*y(jj,1)/2.0_dp)*cos(2.0*alpha*x)
+      end do
+   end do
+   ! Bring to Cheb.-Fourier space
+   Bmx = matmul(Pmj,Tyx)
+   call fftw_execute_dft_r2c(pf1, Bmx, fft1_ml) ! x to Fourier
+   Bml = fft1_ml / real(NF, dp)
+   ! Write solution to file
+   !call decay(mm1,mm2,VM,TM,17) 
+   !call initial_conditions(Pmj,y,amp,NC)
+end if
 
 ! Call time-integrator
 call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
