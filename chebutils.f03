@@ -268,8 +268,8 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   ! rigid-rigid: at = ab = 1.0
   ! free-free  : at = ab = 0.0
   ! rigid-free : at = 0.0, ab = 1.0
-  at = 0.0_dp
-  ab = 0.0_dp
+  at = 1.0_dp
+  ab = 1.0_dp
   bt = 1.0_dp - at
   bb = 1.0_dp - ab
 
