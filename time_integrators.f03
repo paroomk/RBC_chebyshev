@@ -58,13 +58,41 @@ call set_imex_params(c1,c2,c3, d11,d21,d31, d12,d22,d32, d13,d23,d33, &
 NF2 = NF/2 + 1
 
 allocate(K1T(NC,NF2), K1V(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(K2T(NC,NF2), K2V(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(K3T(NC,NF2), K3V(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 allocate(K1hT(NC,NF2), K1hV(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(K2hT(NC,NF2), K2hV(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(K3hT(NC,NF2), K3hV(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(K4hT(NC,NF2), K4hV(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 K1V = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2V = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -198,13 +226,45 @@ NC  = size(Bml,1)
 NF2 = size(Bml,2)
 
 allocate(K1hV(NC,NF2), K1hT(NC,NF2)  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(lhs(NC,NC)                  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(rhs(NC,2)                   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ups(NC,NC)                  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ipiv(NC)                    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(temp(NC)                    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLTml(NC,NF2), NLVml(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 K1hV  = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K1hT  = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -304,17 +364,65 @@ NP  = size(Tyx,1)
 NF  = size(Bmx,2)
 
 allocate(NLVml(NC,NF2)     , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLTml(NC,NF2)     , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(DTml(NC,NF2)      , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Uiyx(NP,NF)       , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(DTyx(NP,NF)       , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLVyx(NP,NF)      , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLVmx(NC,NF)      , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLTyx(NP,NF)      , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLTmx(NC,NF)      , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(lap(NP,NC)        , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(lapV(NP,NF2)      , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(lapU(NP,NF2)      , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 NLVml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 NLTml = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -474,17 +582,65 @@ NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(K1V(NC,NF2), K1T(NC,NF2)    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(K2hV(NC,NF2),K2hT(NC,NF2)   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(lhs(NC,NC)                  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(rhs(NC,2)                   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Kmat(NC,NC)                 , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ore(NP), oim(NP)            , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ipiv(NC)                    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(temp(NC)                    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Aml1(NC,NF2), Bml1(NC,NF2)  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 K1T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K1V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -676,17 +832,65 @@ NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(K2V(NC,NF2), K2T(NC,NF2)    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(K3hV(NC,NF2),K3hT(NC,NF2)   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(lhs(NC,NC)                  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(rhs(NC,2)                   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Kmat(NC,NC)                 , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ore(NP), oim(NP)            , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ipiv(NC)                    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(temp(NC)                    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Aml2(NC,NF2), Bml2(NC,NF2)  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 K2T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -882,17 +1086,65 @@ NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(K3V(NC,NF2), K3T(NC,NF2)    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(K4hV(NC,NF2),K4hT(NC,NF2)   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(lhs(NC,NC)                  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(rhs(NC,2)                   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Kmat(NC,NC)                 , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ore(NP), oim(NP)            , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ipiv(NC)                    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(temp(NC)                    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Aml3(NC,NF2), Bml3(NC,NF2)  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 K3T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K3V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -1037,8 +1289,20 @@ NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(Kre(NC), Kim(NC), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ore(NP), oim(NP), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ipiv(NC)        , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 Kre     = 0.0_dp
 Kim     = 0.0_dp
@@ -1090,6 +1354,10 @@ NP  = size(Tyx, 1)
 NF2 = NF/2 + 1
 
 allocate(temp1(NC,NF2), temp2(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 temp1 = cmplx(0.0_dp, 0.0_dp, kind=dp)
 temp2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
@@ -1142,14 +1410,50 @@ integer                                  :: NF2
 NF2 = NF/2 + 1
 
 allocate(upsilon(NC,NC)   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(lhs(NC,NC)       , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(rhs(NC,2)        , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(ipiv(NC)         , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(temprhs(NC)      , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(rhsT_hold(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(rhsV_hold(NC,NF2), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLTml(NC,NF2)    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(NLVml(NC,NF2)    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 upsilon   = 0.0_dp
 lhs       = 0.0_dp
 rhs       = 0.0_dp

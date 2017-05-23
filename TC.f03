@@ -66,6 +66,10 @@ end if
 
 ! Allocate temperature and velocity fields
 allocate(Tyx(NP,NF), Vyx(NP,NF), Uyx(NP,NF), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 Tyx   = 0.0_dp
 Vyx   = 0.0_dp
 Uyx   = 0.0_dp
@@ -93,21 +97,65 @@ fft1_yl = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 ! Allocate expansion-projection matrices
 allocate(Cjm(NP,NC) , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(Pmj(NC,NP) , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 Cjm = 0.0_dp
 Pmj = 0.0_dp
 
 ! Allocate Galerkin trial functions
 allocate(TM(NP,NC)    , DTM(NP,NC)    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(VM(NP,NC)    , DVM(NP,NC)    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(D2VM(NP,NC)  , D3VM(NP,NC)   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(PTM(NC,NC)   , PD2TM(NC,NC)  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(PDVM(NC,NC)  , PDTM(NC,NC)   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(GPTM(NC,NC)  , GPVM(NC,NC)   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(GPD2VM(NC,NC), GPD4VM(NC,NC) , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(PVEL(NC,NP)                  , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(DTMb(1,NC)                   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 TM        = 0.0_dp
 DTM       = 0.0_dp
@@ -127,8 +175,20 @@ PVEL      = 0.0_dp
 
 ! Allocate misc arrays
 allocate(y(NP,1)   , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(eye(NC,NC), stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 allocate(kx(NF)    , stat=alloc_err)
+if (alloc_err /= 0) then 
+   write(*,*) "Could not allocate space."
+   stop
+end if
 
 y   = 0.0_dp
 eye = 0.0_dp

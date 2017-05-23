@@ -50,8 +50,20 @@ subroutine makeTP(Tjm, Pmj, NCin, NPin)
 
   ! Allocate transformation and projection arrays
   allocate(Tjm(NP,NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(mtj(NP,NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(Pmj(NC,NP), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
 
   Tjm = 0.0_dp
   mtj = 0.0_dp
@@ -105,6 +117,10 @@ subroutine chebint(I1T, I0T)
 
   ! Allocate integration matrix
   allocate(I1T(ny,nc-1), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   I1T = 0.0_dp
 
   ! Integrals of first two polys
@@ -185,9 +201,25 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
 
   ! Allocate y-vectors
   allocate(y(NP,1)   , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(y2(NP,1)  , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(y3(NP,1)  , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(ones(NP,1), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   y = 0.0_dp
   y2 = 0.0_dp
   y3 = 0.0_dp
@@ -195,16 +227,48 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
 
   ! Allocate transformation and projection arrays
   allocate(Cjm(NP,NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(Pmj(NC,NP), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
 
   allocate(Cjmi(NP,NC+4), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(Pmji(NC+4,NP), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
 
   ! Allocate Galerkin trial functions
   allocate(TM(NP,NC)  , DTM(NP,NC) , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(VM(NP,NC)  , DVM(NP,NC) , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(D2VM(NP,NC), D3VM(NP,NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(DTMb(1,NC)              , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
 
   TM   = 0.0_dp
   DTM  = 0.0_dp
@@ -222,9 +286,25 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
 
   ! Allocate integration matrices
   allocate(I1T(NP,NC+3), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(I2T(NP,NC+2), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(I3T(NP,NC+1), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(I4T(NP,NC)  , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
 
   I1T = 0.0_dp
   I2T = 0.0_dp
@@ -233,15 +313,55 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
 
   ! Allocate boundary matrices
   allocate(Tpm1(2,NC+4)        , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(I1Tpm1(2,NC+3)      , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(I2Tpm1(2,NC+2)      , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(I3Tpm1(2,NC+1)      , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(I4Tpm1(2,NC)        , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(IbcV(4,NC)          , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(IbcT(2,NC)          , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(cT0(1,NC), cT1(1,NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(cV0(1,NC), cV1(1,NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(cV2(1,NC), cV3(1,NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
 
   Tpm1   = 0.0_dp
   I1Tpm1 = 0.0_dp
@@ -261,6 +381,10 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
 
   ! Allocate some LAPACK and BLAS arrays
   allocate(ipiv(NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
 
   ipiv = 0
 
@@ -421,11 +545,36 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,PDTM,PD2TM,PVEL, Pmj,C
   NP = size(Pmj,2)
 
   allocate(PVM(NC,NC), PTM(NC,NC), PD2TM(NC,NC), stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(PDVM(NC,NC), PDTM(NC,NC)            , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(GPTM(NC,NC)  , GPVM(NC,NC)          , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(GPD2VM(NC,NC), GPD4VM(NC,NC)        , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(PVEL(NC,NP)                         , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
   allocate(y(NP)                               , stat=alloc_err)
+  if (alloc_err /= 0) then 
+     write(*,*) "Could not allocate space."
+     stop
+  end if
+
   PVM    = 0.0_dp
   PDVM   = 0.0_dp
   PTM    = 0.0_dp

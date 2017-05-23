@@ -152,7 +152,15 @@ subroutine fft_utils(NP,NC,NF)
    call c_f_pointer(ipfy, fft1_yl, [NP, NF/2+1])
 
    allocate(Nxarr_r(NC),  Nxarr_c(NC),  stat=alloc_err)
+   if (alloc_err /= 0) then 
+      write(*,*) "Could not allocate space."
+      stop
+   end if
    allocate(Nxarr_ry(NP), Nxarr_cy(NP), stat=alloc_err)
+   if (alloc_err /= 0) then 
+      write(*,*) "Could not allocate space."
+      stop
+   end if
    Nxarr_r  = NF
    Nxarr_c  = NF/2+1
    Nxarr_ry = NF
