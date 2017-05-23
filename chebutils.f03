@@ -163,7 +163,7 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   real(dp),              dimension(4,4)              :: CM1
   real(dp),              dimension(2,2)              :: CM2
   real(dp)                                           :: at, ab, bt, bb
-  integer                                            :: i, j
+  integer                                            :: i
   integer                                            :: NC, NP
   integer                                            :: info
   integer, allocatable, dimension(:)                 :: ipiv
@@ -268,8 +268,8 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   ! rigid-rigid: at = ab = 1.0
   ! free-free  : at = ab = 0.0
   ! rigid-free : at = 0.0, ab = 1.0
-  at = 0.0_dp
-  ab = 0.0_dp
+  at = 1.0_dp
+  ab = 1.0_dp
   bt = 1.0_dp - at
   bb = 1.0_dp - ab
 

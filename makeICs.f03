@@ -24,14 +24,16 @@ real(dp), allocatable, dimension(:,:)              :: Ty1, D2Ty1
 
 NP = size(y)
 
-allocate(D2Ty1(NP,1), Ty1(Np,1) , stat=alloc_err)
+allocate(D2Ty1(NP,1), Ty1(NP,1) , stat=alloc_err)
 Ty1   = 0.0_dp
 D2Ty1 = 0.0_dp
 
 Ty1   = amp*cos(pi*y/2.0_dp)
 D2Ty1 = -(pi**2.0_dp/4.0_dp)*Ty1
 
-Bml(:,2) = -2.0_dp*cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp)
+!Bml(:,2) = -2.0_dp*cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp)
+!Bml(:,4) = -2.0_dp*cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp)
+Bml(:,3) = -2.0_dp*cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp, kind=dp)
 
 end subroutine initial_conditions
 
