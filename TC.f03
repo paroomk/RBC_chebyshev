@@ -5,9 +5,7 @@ use global, only: set_imex_params, fft_utils,      &
                   alloc_err, eye, kx,              &
                   Aml, Bml, Uml, Amx, Bmx, Umx,    &
                   Vyx, Tyx, Uyx, fft1_ml, fft1_mx, &
-                  fft1_yl, fft1_yx, pU, ipU, pV,   &
-                  ipV, pT, ipT, pf1, ipf1, pfy,    &
-                  ipfy
+                  fft1_yl, fft1_yx, pf1
 
 use makeICs
 use chebutils
@@ -30,7 +28,6 @@ real(dp), allocatable, dimension(:,:)    :: GPD4VM          ! Projected Galerkin
 real(dp), allocatable, dimension(:,:)    :: PVEL            ! Projector for v-eq
 real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
 real(dp)                                 :: amp             ! Initial Temperature amplitude
-real(dp)                                 :: mm1, mm2
 real(dp)                                 :: Nuss            ! Nusselt number
 real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
@@ -39,8 +36,7 @@ real(dp), parameter                      :: t_final = 100.0_dp
 real(dp), parameter                      :: dt      = 0.00025_dp
 
 logical                                  :: read_ICs = .false.
-character(10)                            :: citer
-character(9)                             :: fiter
+real(dp)                                 :: x, dx
 
 !alpha = pi/(2.0_dp*sqrt(2.0))
 
@@ -191,7 +187,6 @@ else
    call fftw_execute_dft_r2c(pf1, Bmx, fft1_ml) ! x to Fourier
    Bml = fft1_ml / real(NF, dp)
    ! Write solution to file
-   !call decay(mm1,mm2,VM,TM,17) 
    !call initial_conditions(Pmj,y,amp,NC)
 end if
 
@@ -206,7 +201,7 @@ call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
 
 call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
 
-1000 format(E25.16E3                           )
+!1000 format(E25.16E3                           )
 !2000 format(E25.16E3,E25.16E3                  )
 !3000 format(E25.16E3,E25.16E3,E25.16E3         )
 !4000 format(E25.16E3,E25.16E3,E25.16E3,E25.16E3)

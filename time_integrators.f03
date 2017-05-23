@@ -44,7 +44,7 @@ complex(dp), allocatable, dimension(:,:) :: K1hV, K2hV, K3hV, K4hV
 complex(dp), allocatable, dimension(:,:) :: K1hT, K2hT, K3hT, K4hT
 real(dp)                                 :: dt_final, time
 real(dp)                                 :: maxVyx, maxTyx
-integer                                  :: i, j, tstep
+integer                                  :: tstep
 integer                                  :: NF2
 
 ! LAPACK and BLAS parameters
@@ -142,8 +142,8 @@ end do
 
 !close(unit=1500)
 
-2000 format(E25.16E3, E25.16E3          )
-3000 format(E25.16E3, E25.16E3, E25.16E3)
+!2000 format(E25.16E3, E25.16E3          )
+!3000 format(E25.16E3, E25.16E3, E25.16E3)
 
 end subroutine imex_rk
 
@@ -384,7 +384,7 @@ call fftw_execute_dft_r2c(pf1, fft1_mx, fft1_ml) ! Phys to Fourier
 NLVml = fft1_ml / real(NF, dp)
 
 ! Dealias
-NF_cut = floor(2.0_dp*NF/3.0_dp)/2.0_dp
+NF_cut = floor(2.0_dp*NF/3.0_dp)/2
 NC_cut = floor(2.0_dp*NC/3.0_dp)
 alpha  = kx(2) ! Get alpha rather than passing it through everywhere
 do i = 1,NF2
@@ -1029,7 +1029,6 @@ integer                                            :: NC, NP, NF2
 
 ! Some LAPACK and BLAS variables
 integer,  allocatable, dimension(:)                :: ipiv
-integer                                            :: info
 real(dp), parameter                                :: scale1=1.0_dp, scale2=0.0_dp
 integer , parameter                                :: incx=1, incy=1
 
@@ -1137,7 +1136,7 @@ real(dp), parameter                      :: scale1=1.0_dp, scale2=0.0_dp
 integer,  parameter                      :: incx=1, incy=1
 integer,  allocatable, dimension(:)      :: ipiv
 integer                                  :: info
-integer                                  :: i, j, k, tstep
+integer                                  :: i, tstep
 integer                                  :: NF2
 
 NF2 = NF/2 + 1
@@ -1244,8 +1243,8 @@ end do
 
 !close(unit=1501)
 
-2000 format(E25.16E3, E25.16E3          )
-3000 format(E25.16E3, E25.16E3, E25.16E3)
+!2000 format(E25.16E3, E25.16E3          )
+!3000 format(E25.16E3, E25.16E3, E25.16E3)
 
 end subroutine backward_euler
 

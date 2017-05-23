@@ -163,7 +163,7 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   real(dp),              dimension(4,4)              :: CM1
   real(dp),              dimension(2,2)              :: CM2
   real(dp)                                           :: at, ab, bt, bb
-  integer                                            :: i, j
+  integer                                            :: i
   integer                                            :: NC, NP
   integer                                            :: info
   integer, allocatable, dimension(:)                 :: ipiv
