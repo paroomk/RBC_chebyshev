@@ -1,7 +1,7 @@
 module makeICs
 
 use types,  only: dp, pi
-use global, only: alloc_err, Aml, Bml
+use global, only: alloc_err, Aml, Bml, Tyx
 
 implicit none
 
@@ -31,7 +31,8 @@ D2Ty1 = 0.0_dp
 Ty1   = amp*cos(pi*y/2.0_dp)
 D2Ty1 = -(pi**2.0_dp/4.0_dp)*Ty1
 
-Bml(:,2) = -2.0_dp*cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp)
+Bml(:,3) = -2.0_dp*cmplx(reshape(matmul(Pmj, D2Ty1),[NC]), 0.0_dp)
+!Bml(:,:) = -2.0_dp*cmplx(0.1_dp*amp, 0.0_dp)
 
 end subroutine initial_conditions
 

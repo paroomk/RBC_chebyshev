@@ -7,7 +7,7 @@ use global, only: set_imex_params, fft_utils,      &
                   Vyx, Tyx, Uyx, fft1_ml, fft1_mx, &
                   fft1_yl, fft1_yx, pU, ipU, pV,   &
                   ipV, pT, ipT, pf1, ipf1, pfy,    &
-                  ipfy
+                  ipfy,y
 
 use makeICs
 use chebutils
@@ -28,28 +28,43 @@ real(dp), allocatable, dimension(:,:)    :: GPTM, GPVM      ! Projected Galerkin
 real(dp), allocatable, dimension(:,:)    :: GPD2VM          ! Projected Galerkin for v-eq
 real(dp), allocatable, dimension(:,:)    :: GPD4VM          ! Projected Galerkin for v-eq
 real(dp), allocatable, dimension(:,:)    :: PVEL            ! Projector for v-eq
-real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
+!real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
 real(dp)                                 :: amp             ! Initial Temperature
                                                             ! amplitude
 real(dp)                                 :: Nuss            ! Nusselt number
-real(dp), parameter                      :: alpha   = 1.5585_dp
+!real(dp),parameter                       :: alpha = 1.5585_dp   
 real(dp)                                 :: nu, kappa
-real(dp), parameter                      :: Ra = 5.0e3_dp, Pr = 7.0_dp
-real(dp), parameter                      :: t_final = 75.0_dp
-real(dp), parameter                      :: dt      = 0.01_dp
+!real(dp),parameter                       :: Ra = 5e6_dp ,Pr=7.0_dp
+!real(dp),parameter                       :: t_final = 75.0_dp 
+!real(dp),parameter                       :: dt = 1e-2_dp      
+
+
+real(dp)                                 :: t_final
+real(dp)                                 :: dt
+real(dp)                                 :: alpha, Pr,Ra
 
 !alpha = pi/(2.0_dp*sqrt(2.0))
-
-nu    = dsqrt(16.0_dp*Pr/Ra)
-kappa = dsqrt(16.0_dp/(Pr*Ra))
-
-NC = 30
-NP = NC + 4
-NF = 32
 
 !NC = 45
 !NP = NC + 4
 !NF = 32
+
+open(2,file="input.data", status="old")
+read(2,*) Pr,alpha
+read(2,*) Ra
+read(2,*) t_final,dt
+read(2,*) NF,NC
+close(unit=2)
+
+nu    = dsqrt(16.0_dp*Pr/Ra)
+kappa = dsqrt(16.0_dp/(Pr*Ra))
+
+write(*,*)"Pr =", Pr,"alpha =", alpha
+write(*,*)"Ra =", Ra
+write(*,*)"t_final =", t_final, "dt_initial =",dt
+write(*,*)"NF =", NF, "NC =", NC
+
+NP=NC+4
 
 if (NP < NC+4) then
    write(*,*) "NP < NC+4 so setting NP = NC+4"
@@ -154,10 +169,10 @@ call initial_conditions(Pmj,y,amp,NC)
 ! Call time-integrator
 call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
              PVEL, Pmj, VM,TM, DVM, DTM, D2VM, D3VM, &
-             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
+             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM,DTMb)
 
 !call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-!                    PVEL,Cjm,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+!                    PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
 !                    GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)

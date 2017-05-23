@@ -67,22 +67,22 @@ end subroutine write_vec_cmplx
 
 !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-subroutine write_mat_cmplx(vname,place, mat)
+subroutine write_mat_cmplx(mat, aname)
 
-character(len=*), intent(in) :: vname,place
+character(len=*), intent(in) :: aname
 complex(dp), intent(in) :: mat(:,:)
-integer :: jj, mx,my
+integer :: ii, jj, mx,my
 
 mx = size(mat(1,:))
 my = size(mat(:,1))
 
+open(unit=8000, file=aname//".txt", action="write", status="unknown", position="append")
 do jj = 1,my
-   if (jj==1) then
-      write(*,*) vname//" = ", mat(jj,:)
-   else
-      write(*,*) place//"   ", mat(jj,:)
-   end if
+   do ii = 1,mx
+      write(unit=8000,fmt=*) mat(jj,ii)
+   end do
 end do
+close(unit=8000)
 
 end subroutine write_mat_cmplx
 

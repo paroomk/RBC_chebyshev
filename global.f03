@@ -11,7 +11,7 @@ public set_imex_params, fft_utils,       &
        Vyx, Amx, Bmx, Umx, Tyx, Uyx,     &
        eye, kx, pU, ipU, pV, ipV, pT,    &
        ipT, pf1, ipf1, fft1_ml, fft1_mx, &
-       pfy, ipfy, fft1_yl, fft1_yx
+       pfy, ipfy, fft1_yl, fft1_yx,y
 
 ! Utilities
 integer                                  :: alloc_err
@@ -44,6 +44,9 @@ type(C_PTR)                              :: pV, ipV   ! plan and inverse plan
 type(C_PTR)                              :: pT, ipT   ! plan and inverse plan
 type(C_PTR)                              :: pf1, ipf1 ! plan and inverse plan
 type(C_PTR)                              :: pfy, ipfy ! plan and inverse plan
+
+!Grid
+real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
 
 contains
 

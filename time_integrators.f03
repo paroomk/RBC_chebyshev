@@ -1,17 +1,17 @@
 module time_integrators
 
-use types,  only: dp, CI
+use types,  only: dp, CI, pi
 use global, only: set_imex_params, fft_utils,      &
                   alloc_err, eye, kx,              &
                   Aml, Bml, Uml, Amx, Bmx, Umx,    &
                   Vyx, Tyx, Uyx, fft1_ml, fft1_mx, &
                   fft1_yl, fft1_yx, pU, ipU, pV,   &
                   ipV, pT, ipT, pf1, ipf1, pfy,    &
-                  ipfy
+                  ipfy,y
 
 use fftw
 use write_pack
-
+use statutils, only: Nusselt
 implicit none
 
 private
@@ -30,12 +30,12 @@ contains
 
 subroutine imex_rk(NC, NF, dt, t_final, nu, kappa,      &
                    PVEL, Pmj,VM,TM,DVM,DTM,D2VM,D3VM,   &
-                   GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
+                   GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM,DTMb)
 
 integer                 , intent(in)     :: NC, NF
-real(dp),                 intent(in)     :: dt, t_final, kappa, nu
+real(dp),                 intent(in)     :: t_final, kappa, nu
 real(dp), dimension(:,:), intent(in)     :: PVEL, Pmj
-real(dp), dimension(:,:), intent(in)     :: VM, TM, DVM, DTM, D2VM, D3VM
+real(dp), dimension(:,:), intent(in)     :: VM, TM, DVM, DTM, D2VM, D3VM, DTMb 
 real(dp), dimension(:,:), intent(in)     :: PVM, PDVM, PTM, GPTM
 real(dp), dimension(:,:), intent(in)     :: GPVM, GPD2VM, GPD4VM
 complex(dp), allocatable, dimension(:,:) :: K1V, K2V, K3V
@@ -44,6 +44,8 @@ complex(dp), allocatable, dimension(:,:) :: K1hV, K2hV, K3hV, K4hV
 complex(dp), allocatable, dimension(:,:) :: K1hT, K2hT, K3hT, K4hT
 real(dp)                                 :: dt_final, time
 real(dp)                                 :: maxVyx, maxTyx
+real(dp)                                 :: dt
+real(dp)                                 :: Nuss
 integer                                  :: i, j, tstep
 integer                                  :: NF2
 
@@ -114,7 +116,7 @@ do ! while time < t_final
    else
       time = time + dt
       tstep = tstep + 1
-      write(*,*) "t = ", time
+      write(*,*) "t = ", time, "dt = ", dt, "Nuss = ", Nuss
    end if
 
    call initrk(K1hV,K1hT, PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3VM,PTM)
@@ -138,16 +140,23 @@ do ! while time < t_final
    ! Update horizontal velocity
    call update_u(Pmj,DVM)
 
+   !Update dt
+   call update_dt(VM,TM,dt)
+   call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
+
 end do
 
 close(unit=1500)
+
+call write_mat_cmplx(Aml,"Aml")
+call write_mat_cmplx(Bml,"Bml")
 
 2000 format(E25.16E3, E25.16E3          )
 3000 format(E25.16E3, E25.16E3, E25.16E3)
 
 end subroutine imex_rk
 
-subroutine initrk(K1hV,K1hT, PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3VM,PTM)
+subroutine initrk(K1hV,K1hT,PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3VM,PTM)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   !
@@ -171,6 +180,7 @@ subroutine initrk(K1hV,K1hT, PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3
   ! OUTPUT:
   !    K1hV: First explicit stage for vertical velocity equation
   !    K1hT: First explicit stage for temperature equation
+  !    K1hU: First explicit stage for mean flow equation
   !
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
 
@@ -254,6 +264,77 @@ do i = 1,NF2
 end do
 
 end subroutine initrk
+
+subroutine nonlinear_terms_Uave(NLUm,PVEL,Pmj,VM,DVM,DTM,Aiml,Biml)
+
+real(dp)   ,              dimension(:,:), intent(in)  :: PVEL, Pmj
+real(dp)   ,              dimension(:,:), intent(in)  :: VM,DVM,DTM
+complex(dp),              dimension(:,:), intent(in)  :: Aiml, Biml
+complex(dp), allocatable, dimension(:,:), intent(out) :: NLUm
+real(dp)   , allocatable, dimension(:,:)              :: Uiyx, UiVyx, DTyx
+real(dp)   , allocatable, dimension(:,:)              :: NLUy
+real(dp)                                              :: alpha, wave, wave2
+integer                                               :: NC, NF2, NP, NF
+integer                                               :: NF_cut, NC_cut
+integer                                               :: i,j,l
+
+NC  = size(Bml,1)
+NF2 = size(Bml,2)
+NP  = size(Tyx,1)
+NF  = size(Bmx,2)
+
+allocate(NLUm(NC,1)     , stat=alloc_err)
+allocate(NLUy(NP,1)     , stat=alloc_err)
+allocate(Uiyx(NP,NF)       , stat=alloc_err)
+allocate(UiVyx(NP,NF)      , stat=alloc_err)
+
+NLUm = cmplx(0.0_dp, 0.0_dp)
+Uiyx  = 0.0_dp
+UiVyx = 0.0_dp
+DTyx  = 0.0_dp
+NLUy = 0.0_dp
+
+do i = 1,NF2
+   wave  = kx(i)
+   if (i /= 1) then
+     fft1_ml(:,i) = CI*Aiml(:,i)/wave  ! Horizontal velocity excluding mean (from continuity)
+   else
+     fft1_ml(:,i) = cmplx(0.0_dp, 0.0_dp)
+   end if
+end do
+
+! Bring fields to physical space
+call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Horizontal velocity Fourier to physical
+Uiyx = matmul(DVM, fft1_mx)
+
+fft1_ml = Aiml
+call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Vertical velocity Fourier to physical
+Vyx = matmul(VM, fft1_mx)
+
+UiVyx = Uiyx*Vyx
+call fftw_execute_dft_r2c(pf1, UiVyx, fft1_ml) ! Phys to Fourier
+NLUy(:,1) = fft1_ml(:,1) / sqrt(real(NF, dp))            ! Check this
+
+!do i = 1,NP
+!   NLUy(i,1) = sum(UiVyx(i,:))/(NF)         ! Crude average  
+!end do
+
+! Requires derivative with respect to y
+
+NLUm = matmul(Pmj, NLUy)  !Physical to Chebyshev
+NLUy = matmul(DTM, NLUm)  !Derivative in y
+NLUm = matmul(Pmj, NLUy)  !Physical to Chebyshev
+ 
+! Dealias
+NC_cut = floor(2.0_dp*NC/3.0_dp)
+
+do j = 1,NC
+   if (j >= NC_cut) then
+      NLUm(i,1) = cmplx(0.0_dp, 0.0_dp)
+   endif
+end do
+
+end subroutine nonlinear_terms_Uave
 
 subroutine nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aiml,Biml)
 
@@ -391,7 +472,6 @@ do i = 1,NF2
    l = abs(wave)/alpha
    do j = 1,NC
       if ((l >= NF_cut) .or. (j >= NC_cut)) then
-         NLTml(j,i) = cmplx(0.0_dp, 0.0_dp)
          NLVml(j,i) = cmplx(0.0_dp, 0.0_dp)
       else
          NLVml(j,i) = CI*wave*NLVml(j,i)
@@ -1114,6 +1194,71 @@ call write_out_mat(Tyx, "Th/Tyx"//fiter)
 
 end subroutine decay
 
+subroutine update_dt(VM,TM,dt)
+
+implicit none
+real(dp),parameter                       :: cfl = 1.0_dp
+real(dp),parameter                       :: dt_ramp = 5.0_dp
+real(dp), dimension(:,:), intent(in)     :: VM, TM
+real(dp)                                 :: tmpmax,tmp
+real(dp)                                 :: dt,dt_old
+real(dp)                                 :: dxmin,dymin,alpha
+complex(dp), allocatable, dimension(:,:) :: temp1, temp2, temp3
+integer                                  :: NP, NF, NC, NF2
+integer                                  :: ii,jj
+! Some LAPACK and BLAS parameters
+real(dp), parameter :: scale1=1.0_dp, scale2=0.0_dp
+
+! Use temperature arrays to get these sizes.  Could use V arrays too.
+NC  = size(Bml, 1)
+NF  = size(Bmx, 2)
+NP  = size(Tyx, 1)
+NF2 = NF/2 + 1
+
+allocate(temp1(NC,NF2), temp3(NC,NF2), stat=alloc_err)
+temp1 = cmplx(0.0_dp, 0.0_dp)
+temp3 = cmplx(0.0_dp, 0.0_dp)
+
+! Bring fields to physical space
+! temporary storage because ifft overwrites input arrays!
+temp1 = Aml
+temp3 = Uml
+
+call fftw_execute_dft_c2r(ipV, Aml, Amx) ! Vertical velocity Fourier to physical
+call fftw_execute_dft_c2r(ipU, Uml, Umx) ! Horizontal velocity Fourier to physical
+
+call dgemm('n', 'n', NP, NF, NC, scale1, VM, NP, Amx, NC, scale2, Vyx, NP) ! Cheb to physical (VV)
+call dgemm('n', 'n', NP, NF, NC, scale1, TM, NP, Umx, NC, scale2, Uyx, NP) ! Cheb to physical (U)
+
+Aml = temp1
+Uml = temp3
+
+alpha = kx(2)
+
+dxmin = 2.0*pi/(alpha*NF)
+dymin = abs(y(1,1)-y(2,1))
+
+tmp    = 0.0_dp
+tmpmax = 0.0_dp
+do jj = 1,NP
+   do ii = 1,NF
+      tmp = 2.0_dp*pi*abs(real(Uyx(jj,ii))) / dxmin + abs(real(Vyx(jj,ii))) / dymin
+      if (tmp > tmpmax) then
+         tmpmax = tmp
+      end if
+   end do
+end do
+
+dt_old = dt
+
+dt = cfl/tmpmax
+
+if(dt > dt_old*dt_ramp) then
+  dt = dt_old*dt_ramp
+endif
+
+end subroutine update_dt
+
 subroutine backward_euler(NC,NF,dt,t_final,nu,kappa,        &
                           PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
                           GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
@@ -1181,12 +1326,20 @@ do ! while time < t_final
 
    dt_final = t_final - time
 
+   if (mod(tstep,100) == 0) then
+      !write(*,*) "time = ", time, "dt = ", dt
+      ! Bring to physical space to track decay rate
+      call decay(maxVyx, maxTyx, VM, TM, tstep)
+      !write(1500, fmt=3000) time, maxVyx, maxTyx
+   end if
+
    if (dt_final <= dt) then
       time = t_final
       tstep = tstep + 1
    else
       time = time + dt
       tstep = tstep + 1
+      write(*,*) "t = ", time, "dt = ", dt
    end if
 
    do i = 1,NF/2+1
