@@ -25,10 +25,6 @@ real(dp), allocatable, dimension(:,:)              :: Ty1, D2Ty1
 NP = size(y)
 
 allocate(D2Ty1(NP,1), Ty1(NP,1) , stat=alloc_err)
-   if (alloc_err /= 0) then 
-      write(*,*) "Could not allocate space."
-      stop
-   end if
 Ty1   = 0.0_dp
 D2Ty1 = 0.0_dp
 

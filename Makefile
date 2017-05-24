@@ -1,5 +1,5 @@
 FC=gfortran
-FFLAGS= -c -O3
+FFLAGS= -c -Wall -Wno-maybe-uninitialized -O3
 
 LIBFLAGS  = -L/usr/lib64
 LIBFLAGS2 = -L/Users/dsondak/fftw/install/lib
