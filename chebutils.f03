@@ -196,7 +196,6 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   ! Allocate transformation and projection arrays
   allocate(Cjm(NP,NC), stat=alloc_err)
   allocate(Pmj(NC,NP), stat=alloc_err)
-
   allocate(Cjmi(NP,NC+4), stat=alloc_err)
   allocate(Pmji(NC+4,NP), stat=alloc_err)
 
@@ -426,6 +425,7 @@ subroutine projectVT(GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,PDTM,PD2TM,PVEL, Pmj,C
   allocate(GPD2VM(NC,NC), GPD4VM(NC,NC)        , stat=alloc_err)
   allocate(PVEL(NC,NP)                         , stat=alloc_err)
   allocate(y(NP)                               , stat=alloc_err)
+
   PVM    = 0.0_dp
   PDVM   = 0.0_dp
   PTM    = 0.0_dp

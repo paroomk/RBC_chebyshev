@@ -60,7 +60,6 @@ NF2 = NF/2 + 1
 allocate(K1T(NC,NF2), K1V(NC,NF2), stat=alloc_err)
 allocate(K2T(NC,NF2), K2V(NC,NF2), stat=alloc_err)
 allocate(K3T(NC,NF2), K3V(NC,NF2), stat=alloc_err)
-
 allocate(K1hT(NC,NF2), K1hV(NC,NF2), stat=alloc_err)
 allocate(K2hT(NC,NF2), K2hV(NC,NF2), stat=alloc_err)
 allocate(K3hT(NC,NF2), K3hV(NC,NF2), stat=alloc_err)
