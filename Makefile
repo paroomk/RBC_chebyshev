@@ -1,9 +1,9 @@
 FC=gfortran
-FFLAGS= -c -Wall -O3
+FFLAGS= -c -Wall -Wno-maybe-uninitialized -O3
 
 LIBFLAGS  = -L/usr/lib64
-LIBFLAGS2 = -L$(FFTW_DIR)/lib
-LDFLAGS   = -I$(FFTW_DIR)/include
+LIBFLAGS2 = -L/usr/local/Cellar/fftw/3.3.6-pl2/lib
+LDFLAGS   = -I/usr/local/Cellar/fftw/3.3.6-pl2/include
 
 MAIN = TC
 
@@ -38,7 +38,6 @@ time_integrators.o : time_integrators.f03
 
 statutils.o : statutils.f03
 	$(FC) $(FFLAGS) statutils.f03
-
 
 $(MAIN).o : $(MAIN).f03
 	$(FC) $(FFLAGS) $(MAIN).f03

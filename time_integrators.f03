@@ -1,17 +1,16 @@
 module time_integrators
 
-use types,  only: dp, CI
+use types,  only: dp, CI, pi
 use global, only: set_imex_params, fft_utils,      &
                   alloc_err, eye, kx,              &
                   Aml, Bml, Uml, Amx, Bmx, Umx,    &
                   Vyx, Tyx, Uyx, fft1_ml, fft1_mx, &
                   fft1_yl, fft1_yx, pU, ipU, pV,   &
                   ipV, pT, ipT, pf1, ipf1, pfy,    &
-                  ipfy
+                  ipfy, y
 
 use fftw
 use write_pack
-
 implicit none
 
 private
@@ -58,41 +57,12 @@ call set_imex_params(c1,c2,c3, d11,d21,d31, d12,d22,d32, d13,d23,d33, &
 NF2 = NF/2 + 1
 
 allocate(K1T(NC,NF2), K1V(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(K2T(NC,NF2), K2V(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(K3T(NC,NF2), K3V(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
-
 allocate(K1hT(NC,NF2), K1hV(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(K2hT(NC,NF2), K2hV(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(K3hT(NC,NF2), K3hV(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(K4hT(NC,NF2), K4hV(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 K1V = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2V = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -142,7 +112,7 @@ do ! while time < t_final
    else
       time = time + dt
       tstep = tstep + 1
-      write(*,*) "t = ", time
+      write(*,*) "t = ", time, "dt = ", dt
    end if
 
    call initrk(K1hV,K1hT, PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3VM,PTM)
@@ -166,6 +136,8 @@ do ! while time < t_final
    ! Update horizontal velocity
    call update_u(Pmj,DVM)
 
+   !Update dt
+   call update_dt(VM,TM,dt)
 end do
 
 !close(unit=1500)
@@ -226,45 +198,13 @@ NC  = size(Bml,1)
 NF2 = size(Bml,2)
 
 allocate(K1hV(NC,NF2), K1hT(NC,NF2)  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(lhs(NC,NC)                  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(rhs(NC,2)                   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ups(NC,NC)                  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ipiv(NC)                    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(temp(NC)                    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLTml(NC,NF2), NLVml(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 K1hV  = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K1hT  = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -364,65 +304,17 @@ NP  = size(Tyx,1)
 NF  = size(Bmx,2)
 
 allocate(NLVml(NC,NF2)     , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLTml(NC,NF2)     , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(DTml(NC,NF2)      , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Uiyx(NP,NF)       , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(DTyx(NP,NF)       , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLVyx(NP,NF)      , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLVmx(NC,NF)      , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLTyx(NP,NF)      , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLTmx(NC,NF)      , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(lap(NP,NC)        , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(lapV(NP,NF2)      , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(lapU(NP,NF2)      , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 NLVml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 NLTml = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -582,65 +474,17 @@ NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(K1V(NC,NF2), K1T(NC,NF2)    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(K2hV(NC,NF2),K2hT(NC,NF2)   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(lhs(NC,NC)                  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(rhs(NC,2)                   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Kmat(NC,NC)                 , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ore(NP), oim(NP)            , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ipiv(NC)                    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(temp(NC)                    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Aml1(NC,NF2), Bml1(NC,NF2)  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 K1T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K1V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -832,65 +676,17 @@ NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(K2V(NC,NF2), K2T(NC,NF2)    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(K3hV(NC,NF2),K3hT(NC,NF2)   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(lhs(NC,NC)                  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(rhs(NC,2)                   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Kmat(NC,NC)                 , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ore(NP), oim(NP)            , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ipiv(NC)                    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(temp(NC)                    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Aml2(NC,NF2), Bml2(NC,NF2)  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 K2T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -1086,65 +882,17 @@ NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(K3V(NC,NF2), K3T(NC,NF2)    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(K4hV(NC,NF2),K4hT(NC,NF2)   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(lhs(NC,NC)                  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(rhs(NC,2)                   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Kmat(NC,NC)                 , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ore(NP), oim(NP)            , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ipiv(NC)                    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(temp(NC)                    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Aml3(NC,NF2), Bml3(NC,NF2)  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 K3T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K3V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -1289,20 +1037,8 @@ NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(Kre(NC), Kim(NC), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ore(NP), oim(NP), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ipiv(NC)        , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 Kre     = 0.0_dp
 Kim     = 0.0_dp
@@ -1354,10 +1090,6 @@ NP  = size(Tyx, 1)
 NF2 = NF/2 + 1
 
 allocate(temp1(NC,NF2), temp2(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 temp1 = cmplx(0.0_dp, 0.0_dp, kind=dp)
 temp2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
@@ -1381,6 +1113,72 @@ call write_out_mat(Vyx, "VV/Vyx"//fiter)
 call write_out_mat(Tyx, "Th/Tyx"//fiter)
 
 end subroutine decay
+
+subroutine update_dt(VM,TM,dt)
+
+implicit none
+real(dp),parameter                       :: cfl = 1.0_dp
+real(dp),parameter                       :: dt_ramp = 5.0_dp
+real(dp), dimension(:,:), intent(in)     :: VM, TM
+real(dp)                                 :: tmpmax,tmp
+real(dp)                                 :: dt,dt_old
+real(dp)                                 :: dxmin,dymin,alpha
+complex(dp), allocatable, dimension(:,:) :: temp1, temp2
+integer                                  :: NP, NF, NC, NF2
+integer                                  :: ii,jj
+! Some LAPACK and BLAS parameters
+real(dp), parameter :: scale1=1.0_dp, scale2=0.0_dp
+
+! Use temperature arrays to get these sizes.  Could use V arrays too.
+NC  = size(Bml, 1)
+NF  = size(Bmx, 2)
+NP  = size(Tyx, 1)
+NF2 = NF/2 + 1
+
+allocate(temp1(NC,NF2), temp2(NC,NF2), stat=alloc_err)
+temp1 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+temp2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+! Bring fields to physical space
+! temporary storage because ifft overwrites input arrays!
+temp1 = Aml
+temp2 = Uml
+
+
+call fftw_execute_dft_c2r(ipV, Aml, Amx) ! Vertical velocity Fourier to physical
+call fftw_execute_dft_c2r(ipU, Uml, Umx) ! Horizontal velocity Fourier to physical
+
+call dgemm('n', 'n', NP, NF, NC, scale1, VM, NP, Amx, NC, scale2, Vyx, NP) ! Cheb to physical (VV)
+call dgemm('n', 'n', NP, NF, NC, scale1, TM, NP, Umx, NC, scale2, Uyx, NP) ! Cheb to physical (U)
+
+Aml = temp1
+Uml = temp2
+
+alpha = kx(2)
+
+dxmin = 2.0*pi/(alpha*NF)
+dymin = abs(y(1,1)-y(2,1))
+
+tmp    = 0.0_dp
+tmpmax = 0.0_dp
+do jj = 1,NP
+   do ii = 1,NF
+      tmp = 2.0_dp*pi*abs(Uyx(jj,ii)) / dxmin + abs(Vyx(jj,ii)) / dymin
+      if (tmp > tmpmax) then
+         tmpmax = tmp
+      end if
+   end do
+end do
+
+dt_old = dt
+
+dt = cfl/tmpmax
+
+if(dt > dt_old*dt_ramp) then
+  dt = dt_old*dt_ramp
+endif
+
+end subroutine update_dt
 
 subroutine backward_euler(NC,NF,dt,t_final,nu,kappa,        &
                           PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
@@ -1410,50 +1208,14 @@ integer                                  :: NF2
 NF2 = NF/2 + 1
 
 allocate(upsilon(NC,NC)   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(lhs(NC,NC)       , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(rhs(NC,2)        , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(ipiv(NC)         , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(temprhs(NC)      , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(rhsT_hold(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(rhsV_hold(NC,NF2), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLTml(NC,NF2)    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(NLVml(NC,NF2)    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 upsilon   = 0.0_dp
 lhs       = 0.0_dp
 rhs       = 0.0_dp

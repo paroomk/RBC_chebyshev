@@ -5,7 +5,7 @@ use global, only: set_imex_params, fft_utils,      &
                   alloc_err, eye, kx,              &
                   Aml, Bml, Uml, Amx, Bmx, Umx,    &
                   Vyx, Tyx, Uyx, fft1_ml, fft1_mx, &
-                  fft1_yl, fft1_yx, pf1
+                  fft1_yl, fft1_yx, pf1,y
 
 use makeICs
 use chebutils
@@ -26,14 +26,14 @@ real(dp), allocatable, dimension(:,:)    :: GPTM, GPVM      ! Projected Galerkin
 real(dp), allocatable, dimension(:,:)    :: GPD2VM          ! Projected Galerkin for v-eq
 real(dp), allocatable, dimension(:,:)    :: GPD4VM          ! Projected Galerkin for v-eq
 real(dp), allocatable, dimension(:,:)    :: PVEL            ! Projector for v-eq
-real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
+!real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
 real(dp)                                 :: amp             ! Initial Temperature amplitude
 real(dp)                                 :: Nuss            ! Nusselt number
 real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
 real(dp), parameter                      :: Ra = 1.0e7_dp, Pr = 7.0_dp
 real(dp), parameter                      :: t_final = 100.0_dp
-real(dp), parameter                      :: dt      = 0.00025_dp
+real(dp)                                 :: dt      = 0.00025_dp
 
 logical                                  :: read_ICs = .false.
 real(dp)                                 :: x, dx
@@ -66,10 +66,6 @@ end if
 
 ! Allocate temperature and velocity fields
 allocate(Tyx(NP,NF), Vyx(NP,NF), Uyx(NP,NF), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 Tyx   = 0.0_dp
 Vyx   = 0.0_dp
 Uyx   = 0.0_dp
@@ -97,65 +93,21 @@ fft1_yl = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
 ! Allocate expansion-projection matrices
 allocate(Cjm(NP,NC) , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(Pmj(NC,NP) , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 Cjm = 0.0_dp
 Pmj = 0.0_dp
 
 ! Allocate Galerkin trial functions
 allocate(TM(NP,NC)    , DTM(NP,NC)    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(VM(NP,NC)    , DVM(NP,NC)    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(D2VM(NP,NC)  , D3VM(NP,NC)   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(PTM(NC,NC)   , PD2TM(NC,NC)  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(PDVM(NC,NC)  , PDTM(NC,NC)   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(GPTM(NC,NC)  , GPVM(NC,NC)   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(GPD2VM(NC,NC), GPD4VM(NC,NC) , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(PVEL(NC,NP)                  , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(DTMb(1,NC)                   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 TM        = 0.0_dp
 DTM       = 0.0_dp
@@ -175,20 +127,8 @@ PVEL      = 0.0_dp
 
 ! Allocate misc arrays
 allocate(y(NP,1)   , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(eye(NC,NC), stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 allocate(kx(NF)    , stat=alloc_err)
-if (alloc_err /= 0) then 
-   write(*,*) "Could not allocate space."
-   stop
-end if
 
 y   = 0.0_dp
 eye = 0.0_dp
@@ -207,7 +147,6 @@ kx = alpha*kx
 
 ! Get the Chebyshev Galerkin functions
 call makeVTM(VM,TM,DVM,DTM,DTMb,D2VM,D3VM,Cjm,Pmj, NC,NP)
-
 y(:,1) = Cjm(:,2)
 call write_out_mat(y, "y")
 
