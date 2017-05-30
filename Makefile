@@ -1,9 +1,9 @@
 FC=gfortran
-FFLAGS= -c -O3
+FFLAGS= -c -Wall -O3
 
 LIBFLAGS  = -L/usr/lib64
-LIBFLAGS2 = -L/Users/dsondak/fftw/install/lib
-LDFLAGS   = -I/Users/dsondak/fftw/install/include
+LIBFLAGS2 = -L$(FFTW_DIR)/lib
+LDFLAGS   = -I$(FFTW_DIR)/include
 
 MAIN = TC
 
