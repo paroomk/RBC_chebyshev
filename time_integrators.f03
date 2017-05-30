@@ -1,17 +1,16 @@
 module time_integrators
 
-use types,  only: dp, CI
+use types,  only: dp, CI, pi
 use global, only: set_imex_params, fft_utils,      &
                   alloc_err, eye, kx,              &
                   Aml, Bml, Uml, Amx, Bmx, Umx,    &
                   Vyx, Tyx, Uyx, fft1_ml, fft1_mx, &
                   fft1_yl, fft1_yx, pU, ipU, pV,   &
                   ipV, pT, ipT, pf1, ipf1, pfy,    &
-                  ipfy
+                  ipfy, y
 
 use fftw
 use write_pack
-
 implicit none
 
 private
@@ -113,7 +112,7 @@ do ! while time < t_final
    else
       time = time + dt
       tstep = tstep + 1
-      write(*,*) "t = ", time
+      write(*,*) "t = ", time, "dt = ", dt
    end if
 
    call initrk(K1hV,K1hT, PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3VM,PTM)
@@ -137,6 +136,8 @@ do ! while time < t_final
    ! Update horizontal velocity
    call update_u(Pmj,DVM)
 
+   !Update dt
+   call update_dt(VM,TM,dt)
 end do
 
 !close(unit=1500)
@@ -1112,6 +1113,72 @@ call write_out_mat(Vyx, "VV/Vyx"//fiter)
 call write_out_mat(Tyx, "Th/Tyx"//fiter)
 
 end subroutine decay
+
+subroutine update_dt(VM,TM,dt)
+
+implicit none
+real(dp),parameter                       :: cfl = 1.0_dp
+real(dp),parameter                       :: dt_ramp = 5.0_dp
+real(dp), dimension(:,:), intent(in)     :: VM, TM
+real(dp)                                 :: tmpmax,tmp
+real(dp)                                 :: dt,dt_old
+real(dp)                                 :: dxmin,dymin,alpha
+complex(dp), allocatable, dimension(:,:) :: temp1, temp2
+integer                                  :: NP, NF, NC, NF2
+integer                                  :: ii,jj
+! Some LAPACK and BLAS parameters
+real(dp), parameter :: scale1=1.0_dp, scale2=0.0_dp
+
+! Use temperature arrays to get these sizes.  Could use V arrays too.
+NC  = size(Bml, 1)
+NF  = size(Bmx, 2)
+NP  = size(Tyx, 1)
+NF2 = NF/2 + 1
+
+allocate(temp1(NC,NF2), temp2(NC,NF2), stat=alloc_err)
+temp1 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+temp2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+! Bring fields to physical space
+! temporary storage because ifft overwrites input arrays!
+temp1 = Aml
+temp2 = Uml
+
+
+call fftw_execute_dft_c2r(ipV, Aml, Amx) ! Vertical velocity Fourier to physical
+call fftw_execute_dft_c2r(ipU, Uml, Umx) ! Horizontal velocity Fourier to physical
+
+call dgemm('n', 'n', NP, NF, NC, scale1, VM, NP, Amx, NC, scale2, Vyx, NP) ! Cheb to physical (VV)
+call dgemm('n', 'n', NP, NF, NC, scale1, TM, NP, Umx, NC, scale2, Uyx, NP) ! Cheb to physical (U)
+
+Aml = temp1
+Uml = temp2
+
+alpha = kx(2)
+
+dxmin = 2.0*pi/(alpha*NF)
+dymin = abs(y(1,1)-y(2,1))
+
+tmp    = 0.0_dp
+tmpmax = 0.0_dp
+do jj = 1,NP
+   do ii = 1,NF
+      tmp = 2.0_dp*pi*abs(Uyx(jj,ii)) / dxmin + abs(Vyx(jj,ii)) / dymin
+      if (tmp > tmpmax) then
+         tmpmax = tmp
+      end if
+   end do
+end do
+
+dt_old = dt
+
+dt = cfl/tmpmax
+
+if(dt > dt_old*dt_ramp) then
+  dt = dt_old*dt_ramp
+endif
+
+end subroutine update_dt
 
 subroutine backward_euler(NC,NF,dt,t_final,nu,kappa,        &
                           PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
