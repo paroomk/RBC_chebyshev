@@ -1163,7 +1163,7 @@ tmp    = 0.0_dp
 tmpmax = 0.0_dp
 do jj = 1,NP
    do ii = 1,NF
-      tmp = 2.0_dp*pi*abs(real(Uyx(jj,ii))) / dxmin + abs(real(Vyx(jj,ii))) / dymin
+      tmp = 2.0_dp*pi*abs(Uyx(jj,ii)) / dxmin + abs(Vyx(jj,ii)) / dymin
       if (tmp > tmpmax) then
          tmpmax = tmp
       end if
