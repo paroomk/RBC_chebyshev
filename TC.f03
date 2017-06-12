@@ -5,7 +5,7 @@ use global, only: set_imex_params, fft_utils,      &
                   alloc_err, eye, kx,              &
                   Aml, Bml, Uml, Amx, Bmx, Umx,    &
                   Vyx, Tyx, Uyx, fft1_ml, fft1_mx, &
-                  fft1_yl, fft1_yx, pf1
+                  fft1_yl, fft1_yx, pf1,y
 
 use makeICs
 use chebutils
@@ -26,14 +26,14 @@ real(dp), allocatable, dimension(:,:)    :: GPTM, GPVM      ! Projected Galerkin
 real(dp), allocatable, dimension(:,:)    :: GPD2VM          ! Projected Galerkin for v-eq
 real(dp), allocatable, dimension(:,:)    :: GPD4VM          ! Projected Galerkin for v-eq
 real(dp), allocatable, dimension(:,:)    :: PVEL            ! Projector for v-eq
-real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
+!real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
 real(dp)                                 :: amp             ! Initial Temperature amplitude
 real(dp)                                 :: Nuss            ! Nusselt number
 real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
 real(dp), parameter                      :: Ra = 1.0e7_dp, Pr = 7.0_dp
 real(dp), parameter                      :: t_final = 100.0_dp
-real(dp), parameter                      :: dt      = 0.00025_dp
+real(dp)                                 :: dt      = 0.00025_dp
 
 logical                                  :: read_ICs = .false.
 real(dp)                                 :: x, dx
@@ -147,7 +147,6 @@ kx = alpha*kx
 
 ! Get the Chebyshev Galerkin functions
 call makeVTM(VM,TM,DVM,DTM,DTMb,D2VM,D3VM,Cjm,Pmj, NC,NP)
-
 y(:,1) = Cjm(:,2)
 call write_out_mat(y, "y")
 
