@@ -36,6 +36,9 @@
       \frac{\partial T}{\partial t} + \mathbf{u}\cdot\nabla T = \kappa_{0}\lapl T \\
       \partial_{x}u + \partial_{y}v = 0.
     \end{align}
+    \begin{align}
+     \frac{\partial \bar{u}}{\partial t} = \nu_{0} {\partial_{y}}^{2}  \bar{u} + \partial_{y} \overline{uv}.
+    \end{align}
     with boundary conditions 
     \begin{align}
       &v = \partial_{y} v = 0, \qquad y = \pm 1 \\
@@ -67,6 +70,13 @@
       i\lr{\alpha k_{x}}\wh{u}_{l} + \partial_{y}\wh{v} = 0 \label{eq:cont_l}.
     \end{align}
 
+Similarly, the mean flow equation becomes,
+\begin{align}
+\partial_{t}\wh{u}_{l} = \nu_{0} {\partial_{y}}^{2} \wh{u}_l - \partial_{y}\wh{{uv}}_l \label{eq:meanflow_l}.
+\end{align}
+
+for $k_x = 0$.
+
   \subsection{$y$-Discretization}
     We use Chebyshev expansions in the $y$-direction following very closely Wally's 
     Chebyshev approach.  We let 
@@ -89,6 +99,11 @@
       \partial_{y}^{4}\wh{v}_{l} &= \mathbf{T}_{N}\lr{y}\wh{\mathbf{a}}_{l} \\
       \partial_{y}^{2}\wh{u}_{l} &= \mathbf{T}_{N}\lr{y}\wh{\mathbf{d}}_{l}.
     \end{align}
+    
+    \begin{align}
+     \partial_{y}^{2}\bar{u} &= \mathbf{T}_{N}\lr{y}\wh{\mathbf{c}}.
+    \end{align}
+    
     This gives, 
     \begin{align}
       \partial_{y}^{3}\wh{v}_{l} &= D3\mathbf{V}\lr{y}\wh{\mathbf{a}}_{l} \\
@@ -103,6 +118,13 @@
     \end{align}
     where, once again, the Galerkin modes $\mathbf{V}$ and $\mathbf{U}$ 
     have the appropriate boundary conditions built in.
+
+    Also,
+    
+    \begin{align}
+    &\partial_{y}\bar{u} = D\mathbf{U}\lr{y}\wh{\mathbf{c}} \\
+    &\bar{u} = \mathbf{U}\lr{y}\wh{\mathbf{c}}.
+    \end{align}
 
     Using the Chebyshev expansions in~\eqref{eq:Tl} gives 
     \begin{align}
@@ -128,6 +150,26 @@
     \end{align}
     When $k_{x} \neq 0 $ we can solve for the horizontal velocity modes $\displaystyle \wh{\mathbf{d}}_{l}$. 
     When $k_{x} = 0$ we need to write a separate equation for the mean flow.
+
+    The mean flow equation~\eqref{eq:meanflow_l} using the Chebyshev expansions becomes,
+    
+    \begin{align}
+    \boldsymbol{\mathbf{U}}\lr{y}\partial_{t}\wh{\mathbf{c}} + \wh{\mathcal{N}}_u = 
+    \mathbf{T}_N\lr{y}\wh{\mathbf{c}} .
+    \end{align} 
+    
+    where  $\wh{\mathcal{N}}_u =   \partial_{y} \overline{uv}$.  This term is evaluated as follows,
+    \begin{align}
+    \overline{uv} =  \mathbf{T}_N\lr{y}\wh{\mathbf{n}} \\
+    \partial_{y} \overline{uv} = \mathbf{T}_N\lr{y}\wh{\mathbf{m}}.
+    \end{align}
+    where $\wh{\mathbf{m}}$ is computed using 'C2Cder' subroutine (Cheb to Cheb differentiation) from Wally's notes.
+    
+    After projection into Chebyshev space, we have,
+    \begin{align}
+    \mathbf{P}_{T}\boldsymbol{\mathbf{U}}\lr{y}\partial_{t}\wh{\mathbf{c}} + \mathbf{I}\wh{m} = 
+    \mathbf{I}\wh{\mathbf{c}} .
+    \end{align}
 
   \section{Temporal Discretization}
 
