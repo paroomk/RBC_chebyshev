@@ -3,6 +3,7 @@
 \newcommand{\lapl}{\nabla^{2}}
 \newcommand{\lr}[1]{\left(#1\right)}
 \newcommand{\wh}[1]{\widehat{#1}}
+\newcommand{\ua}{\overline{u}}
 
 \usepackage{amsmath, amsfonts}
 \usepackage[margin=0.75in]{geometry}
@@ -30,15 +31,19 @@
   \maketitle
 
   \section{Governing Equations}
-    The nondimensional equations are 
+    We will solve for the vertical velocity $v\lr{x,y}$, the horizontal velocity $u\lr{x,y} = \ua\lr{y} + u\lr{x,y}$ 
+    (decomposed into the horizontal mean $\ua\lr{y}$ and the fluctuations about the mean $u\lr{x,y}$.  We will 
+    also ultimately solve for the temperature field $T\lr{x,y}$ which is the sum of the conduction solution and 
+    the departure from the conduction solution (see below).  The nondimensional equations are 
     \begin{align}
       \frac{\partial \lapl v}{\partial t} + \partial_{x}\lr{u\lapl v - v\lapl u} = \nu_{0}\lapl\lapl v \\
       \frac{\partial T}{\partial t} + \mathbf{u}\cdot\nabla T = \kappa_{0}\lapl T \\
-      \partial_{x}u + \partial_{y}v = 0.
+      \partial_{x}u + \partial_{y}v = 0 \\
+      \frac{\partial \ua}{\partial t} + \partial_{y} \overline{uv} = \nu_{0} {\partial_{y}}^{2}  \ua \label{eq:meanflow}.
     \end{align}
-    \begin{align}
-     \frac{\partial \bar{u}}{\partial t} = \nu_{0} {\partial_{y}}^{2}  \bar{u} + \partial_{y} \overline{uv}.
-    \end{align}
+%    \begin{align}
+%     \frac{\partial \{u}}{\partial t} = \nu_{0} {\partial_{y}}^{2}  \{u} + \partial_{y} \overline{uv}.
+%    \end{align}
     with boundary conditions 
     \begin{align}
       &v = \partial_{y} v = 0, \qquad y = \pm 1 \\
@@ -70,12 +75,15 @@
       i\lr{\alpha k_{x}}\wh{u}_{l} + \partial_{y}\wh{v} = 0 \label{eq:cont_l}.
     \end{align}
 
-Similarly, the mean flow equation becomes,
-\begin{align}
-\partial_{t}\wh{u}_{l} = \nu_{0} {\partial_{y}}^{2} \wh{u}_l - \partial_{y}\wh{{uv}}_l \label{eq:meanflow_l}.
-\end{align}
+    Note that we do not take the Fourier transform of the mean flow equation because it is
+    has no horizontal component.
 
-for $k_x = 0$.
+%Similarly, the mean flow equation becomes,
+%\begin{align}
+%\partial_{t}\wh{u}_{l} = \nu_{0} {\partial_{y}}^{2} \wh{u}_l - \partial_{y}\wh{{uv}}_l \label{eq:meanflow_l}.
+%\end{align}
+%
+%for $k_x = 0$.
 
   \subsection{$y$-Discretization}
     We use Chebyshev expansions in the $y$-direction following very closely Wally's 
@@ -97,12 +105,13 @@ for $k_x = 0$.
     Similarly, for the velocity fields we have 
     \begin{align}
       \partial_{y}^{4}\wh{v}_{l} &= \mathbf{T}_{N}\lr{y}\wh{\mathbf{a}}_{l} \\
-      \partial_{y}^{2}\wh{u}_{l} &= \mathbf{T}_{N}\lr{y}\wh{\mathbf{d}}_{l}.
+      %\partial_{y}^{2}\wh{u}_{l} &= \mathbf{T}_{N}\lr{y}\wh{\mathbf{d}}_{l} \\
+      \partial_{y}^{2}\ua        &= \mathbf{T}_{N}\lr{y}\mathbf{c}.
     \end{align}
     
-    \begin{align}
-     \partial_{y}^{2}\bar{u} &= \mathbf{T}_{N}\lr{y}\wh{\mathbf{c}}.
-    \end{align}
+%    \begin{align}
+%     \partial_{y}^{2}\{u} &= \mathbf{T}_{N}\lr{y}\wh{\mathbf{c}}.
+%    \end{align}
     
     This gives, 
     \begin{align}
@@ -113,18 +122,23 @@ for $k_x = 0$.
     \end{align}
     and 
     \begin{align}
-      &\partial_{y}\wh{u}_{l} = D\mathbf{U}\lr{y}\wh{\mathbf{d}}_{l} \\
-      &\wh{u}_{l} = \mathbf{U}\lr{y}\wh{\mathbf{d}}_{l}.
+      \partial_{y}\ua &= D\mathbf{U}\lr{y}\mathbf{c} \\
+                  \ua &= \mathbf{U}\lr{y}\mathbf{c}.
     \end{align}
+%    and 
+%    \begin{align}
+%      &\partial_{y}\wh{u}_{l} = D\mathbf{U}\lr{y}\wh{\mathbf{d}}_{l} \\
+%      &\wh{u}_{l} = \mathbf{U}\lr{y}\wh{\mathbf{d}}_{l}.
+%    \end{align}
     where, once again, the Galerkin modes $\mathbf{V}$ and $\mathbf{U}$ 
     have the appropriate boundary conditions built in.
 
-    Also,
-    
-    \begin{align}
-    &\partial_{y}\bar{u} = D\mathbf{U}\lr{y}\wh{\mathbf{c}} \\
-    &\bar{u} = \mathbf{U}\lr{y}\wh{\mathbf{c}}.
-    \end{align}
+%    Also,
+%    
+%    \begin{align}
+%    &\partial_{y}\{u} = D\mathbf{U}\lr{y}\wh{\mathbf{c}} \\
+%    &\{u} = \mathbf{U}\lr{y}\wh{\mathbf{c}}.
+%    \end{align}
 
     Using the Chebyshev expansions in~\eqref{eq:Tl} gives 
     \begin{align}
@@ -140,36 +154,98 @@ for $k_x = 0$.
       \kappa_{0}\lr{-\lr{\alpha k_{x}}^{2}\mathbf{P}_{T}\boldsymbol{\Psi}\lr{y} + \mathbf{I}}\wh{\mathbf{b}}_{l}.
     \end{align}
 
-    Using the Chebyshev discretization in the continuity equation~\eqref{eq:cont_l} gives 
+    Note that we will only use the continuity equation to solve for the horizontal velocity 
+    perturabation.  Further note that the horizontal velocity perturbation only appears in 
+    the nonlinear terms in each equation.  The nonlinear terms are computed in physical space 
+    (since we're using a pseudospectral method) and so we never actually need the horizontal 
+    velocity perturbation in Chebyshev space.  With this in mind, we proceed to compute the 
+    relevant derivatives of the horizontal velocity perturbation that will be used in the 
+    nonlinear terms in each of the main evolution equations (temperature, vertical velocity, 
+    and mean flow).  We have, 
     \begin{align}
-      i\lr{\alpha k_{x}}\mathbf{U}\wh{\mathbf{d}}_{l} + D\mathbf{V}\wh{\mathbf{a}}_{l} = 0.
+      \partial_{x}u + \partial_{y}v = 0.
     \end{align}
-    Projecting into Chebyshev space results in 
+    Taking the Fourier transform gives 
     \begin{align}
-      i\lr{\alpha k_{x}}\mathbf{P}_{T}\mathbf{U}\wh{\mathbf{d}}_{l} + \mathbf{P}_{T}D\mathbf{V}\wh{\mathbf{a}}_{l} = 0.
+      \wh{u}_{l}\lr{y} = \frac{i}{\alpha k_{x}} \partial_{y}\wh{v}_{l}\lr{y}.
     \end{align}
-    When $k_{x} \neq 0 $ we can solve for the horizontal velocity modes $\displaystyle \wh{\mathbf{d}}_{l}$. 
-    When $k_{x} = 0$ we need to write a separate equation for the mean flow.
+    Expanding the $y$-derivative of $v$ in Chebyshev modes leads to,
+    \begin{align}
+      \wh{u}_{l}\lr{y} = \frac{i}{\alpha k_{x}} D\mathbf{V}\lr{y}\wh{\mathbf{a}}_{l}.
+      \label{eq:uly}
+    \end{align}
+    We will also need the first derivative in $y$ of the horizontal velocity perturbation.  
+    We begin by taking the $y$-derivative of the continuity equation, 
+    \begin{align}
+      \partial_{x}\partial_{y}u + \partial_{y}^{2}v = 0.
+    \end{align}
+    After taking the Fourier transform we get, 
+    \begin{align}
+      \partial_{y}\wh{u}_{l} = \frac{i}{\alpha k_{x}}\partial_{y}^{2}\wh{v}_{l}.
+    \end{align}
+    Expanding in Chebyshev modes results in 
+    \begin{align}
+      \partial_{y}\wh{u}_{l}\lr{y} = \frac{i}{\alpha k_{x}}D2\mathbf{V}\lr{y}\wh{\mathbf{a}}_{l}.
+      \label{eq:dyuly}
+    \end{align}
 
-    The mean flow equation~\eqref{eq:meanflow_l} using the Chebyshev expansions becomes,
-    
+%    Using the Chebyshev discretization in the continuity equation~\eqref{eq:cont_l} gives 
+%    \begin{align}
+%      i\lr{\alpha k_{x}}\mathbf{U}\wh{\mathbf{d}}_{l} + D\mathbf{V}\wh{\mathbf{a}}_{l} = 0.
+%    \end{align}
+%    Projecting into Chebyshev space results in 
+%    \begin{align}
+%      i\lr{\alpha k_{x}}\mathbf{P}_{T}\mathbf{U}\wh{\mathbf{d}}_{l} + \mathbf{P}_{T}D\mathbf{V}\wh{\mathbf{a}}_{l} = 0.
+%    \end{align}
+%    When $k_{x} \neq 0 $ we can solve for the horizontal velocity modes $\displaystyle \wh{\mathbf{d}}_{l}$. 
+%    When $k_{x} = 0$ we need to write a separate equation for the mean flow.
+
+    The mean flow equation~\eqref{eq:meanflow} using the Chebyshev expansions becomes,
     \begin{align}
-    \boldsymbol{\mathbf{U}}\lr{y}\partial_{t}\wh{\mathbf{c}} + \wh{\mathcal{N}}_u = 
-    \mathbf{T}_N\lr{y}\wh{\mathbf{c}} .
+      \mathbf{U}\lr{y}\partial_{t}\mathbf{c} + \mathcal{N}_{u} = \nu_{0}\mathbf{T}_N\lr{y}\mathbf{c}
     \end{align} 
-    
-    where  $\wh{\mathcal{N}}_u =   \partial_{y} \overline{uv}$.  This term is evaluated as follows,
-    \begin{align}
-    \overline{uv} =  \mathbf{T}_N\lr{y}\wh{\mathbf{n}} \\
-    \partial_{y} \overline{uv} = \mathbf{T}_N\lr{y}\wh{\mathbf{m}}.
-    \end{align}
-    where $\wh{\mathbf{m}}$ is computed using 'C2Cder' subroutine (Cheb to Cheb differentiation) from Wally's notes.
+    where  $\mathcal{N}_{u} = \partial_{y}\overline{uv}$.
     
     After projection into Chebyshev space, we have,
     \begin{align}
-    \mathbf{P}_{T}\boldsymbol{\mathbf{U}}\lr{y}\partial_{t}\wh{\mathbf{c}} + \mathbf{I}\wh{m} = 
-    \mathbf{I}\wh{\mathbf{c}} .
+      \mathbf{P}_{T}\mathbf{U}\lr{y}\partial_{t}\mathbf{c} + \mathbf{P}_{T}\mathcal{N}_{u} = 
+      \nu_{0}\mathbf{I}\mathbf{c} .
     \end{align}
+
+    Our notation regarding the nonlinear term is a bit strange.  However, we shall discuss
+    how this term is computed which will shed some light on our notation of choice.  First, 
+    we rewrite the nonlinear term as 
+    \begin{align}
+      \partial_{y}\overline{uv} = \overline{u\partial_{y}v} + \overline{v\partial_{y}u}.
+    \end{align}
+    Note that in the code each term is in Fourier space.  Here are some steps for computing the 
+    nonlinear term:
+    \begin{enumerate}
+      \item The first step is to inverse transform from wavenumber space to $x$-space.  
+      \item Then, using~\eqref{eq:uly} and~\eqref{eq:dyuly} we can bring each term into physical space.  
+      \item Next compute the average in the $x$-direction.  
+      \item At this point, we have computed the nonlinear term in physical space.  The last step is to 
+            bring it back into Chebyshev space.  Note that it is not necessary to do a Fourier transform 
+            because we have averaged the horizontal direction out.
+    \end{enumerate}
+
+    %\begin{align}
+    %\boldsymbol{\mathbf{U}}\lr{y}\partial_{t}\wh{\mathbf{c}} + \wh{\mathcal{N}}_u = 
+    %\mathbf{T}_N\lr{y}\wh{\mathbf{c}} .
+    %\end{align} 
+    %
+    %where  $\wh{\mathcal{N}}_u =   \partial_{y} \overline{uv}$.  This term is evaluated as follows,
+    %\begin{align}
+    %\overline{uv} =  \mathbf{T}_N\lr{y}\wh{\mathbf{n}} \\
+    %\partial_{y} \overline{uv} = \mathbf{T}_N\lr{y}\wh{\mathbf{m}}.
+    %\end{align}
+    %where $\wh{\mathbf{m}}$ is computed using 'C2Cder' subroutine (Cheb to Cheb differentiation) from Wally's notes.
+    %
+    %After projection into Chebyshev space, we have,
+    %\begin{align}
+    %\mathbf{P}_{T}\boldsymbol{\mathbf{U}}\lr{y}\partial_{t}\wh{\mathbf{c}} + \mathbf{I}\wh{m} = 
+    %\mathbf{I}\wh{\mathbf{c}} .
+    %\end{align}
 
   \section{Temporal Discretization}
 
