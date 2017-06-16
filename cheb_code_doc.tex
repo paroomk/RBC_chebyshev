@@ -249,4 +249,23 @@
 
   \section{Temporal Discretization}
 
+  \section{Verification and Validation (V\&V)}
+  In this section we summarize some of the tests that we performed to verify our code.  We 
+  primarily focus on code verification at this point rather than validation.  At some point, 
+  we would need to do some validation testing as well.
+
+  \subsection{Mean-Flow Implementation}
+    We ran a simulation with $\ua\lr{y,t=0} = 0$ and turned off the nonlinear term.  The 
+    test here is to ensure that no mean flow develops.  If a mean flow does develop then 
+    we have inadvertently introduced a source into the mean flow equation.  When running 
+    this test, the mean flow remained zero for all time.
+
+    The next set of tests involved running a simulation with $\ua\lr{y,t=0} = \ua_{0}\lr{y}$ 
+    and no nonlinear term.  In this situation, we have an analytical solution and we can 
+    compare our analytical solution to the numerical solution.  We also do a convergence 
+    study.  First we did a mesh refinement by factors of $2$ in the $y$-direction and 
+    then we did a mesh refinement by factors of $2$ in the $x$-direction.  In each case 
+    we plotted the $L_{2}$ error as a function of mesh parameter to make sure that we 
+    achieved the correct convergence rate.
+
 \end{document}
