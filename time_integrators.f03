@@ -14,7 +14,7 @@ use write_pack
 implicit none
 
 private
-public imex_rk, backward_euler, nonlinear_terms, update_u, decay
+public imex_rk, backward_euler, nonlinear_terms, update_u, probes
 
 real(dp) :: c1, c2, c3
 real(dp) :: d11, d12, d13
@@ -42,9 +42,11 @@ complex(dp), allocatable, dimension(:,:) :: K1T, K2T, K3T
 complex(dp), allocatable, dimension(:,:) :: K1hV, K2hV, K3hV, K4hV
 complex(dp), allocatable, dimension(:,:) :: K1hT, K2hT, K3hT, K4hT
 real(dp)                                 :: dt_final, time
-real(dp)                                 :: maxVyx, maxTyx
+real(dp)                                 :: Vprobe, Tprobe
 integer                                  :: tstep
 integer                                  :: NF2
+integer, parameter                       :: interval=500 ! How often to write fields to file
+logical                                  :: iprobe=.true. ! Get time trace of fields
 
 ! LAPACK and BLAS parameters
 real(dp), parameter                      :: scale1=1.0_dp, scale2=0.0_dp
@@ -85,18 +87,13 @@ K4hT = cmplx(0.0_dp, 0.0_dp, kind=dp)
 time  = 0.0_dp
 tstep = 0
 
-!open(unit=1500, file="maxval.txt", action="write", status="unknown", position="append")
+open(unit=1500, file="Tprobe.txt", action="write", status="unknown", position="append")
 
 do ! while time < t_final
 
    ! Do some computations using data from previous time step
-
-   if (mod(tstep,500) == 0) then
-      !write(*,*) "time = ", time, "dt = ", dt
-      ! Bring to physical space to track decay rate
-      call decay(maxVyx, maxTyx, VM, TM, tstep)
-      !write(1500, fmt=3000) time, maxVyx, maxTyx
-   end if
+   call probes(Vprobe, Tprobe, VM, TM, tstep, interval, iprobe)
+   write(1500, fmt=3000) time, Vprobe, Tprobe
 
    ! Now move on to next time step
    if (time == t_final) then
@@ -140,10 +137,10 @@ do ! while time < t_final
    call update_dt(VM,TM,dt)
 end do
 
-!close(unit=1500)
+close(unit=1500)
 
 !2000 format(E25.16E3, E25.16E3          )
-!3000 format(E25.16E3, E25.16E3, E25.16E3)
+3000 format(E25.16E3, E25.16E3, E25.16E3)
 
 end subroutine imex_rk
 
@@ -1065,54 +1062,63 @@ end do
 
 end subroutine update_u
 
-subroutine decay(maxVyx, maxTyx, VM, TM, iter)
+subroutine probes(Vprobe, Tprobe, VM, TM, iter, interval, iprobe)
 
 implicit none
 
-integer,                  intent(in)     :: iter
+integer,                  intent(in)     :: iter, interval
+logical,                  intent(in)     :: iprobe
 real(dp), dimension(:,:), intent(in)     :: VM, TM
-real(dp),                 intent(out)    :: maxVyx, maxTyx
+real(dp),                 intent(out)    :: Vprobe, Tprobe
 complex(dp), allocatable, dimension(:,:) :: temp1, temp2
 integer                                  :: NP, NF, NC, NF2
+integer                                  :: fprint
 character(10)                            :: citer
 character(9)                             :: fiter
 
 ! Some LAPACK and BLAS parameters
 real(dp), parameter :: scale1=1.0_dp, scale2=0.0_dp
 
-write(citer, "(I10)") 1000000000 + iter
-fiter = citer(2:10)
+fprint = mod(iter, interval)
+if ( (fprint == 0).or.(iprobe)) then
+    ! Use temperature arrays to get these sizes.  Could use V arrays too.
+    NC  = size(Bml, 1)
+    NF  = size(Bmx, 2)
+    NP  = size(Tyx, 1)
+    NF2 = NF/2 + 1
+    
+    allocate(temp1(NC,NF2), temp2(NC,NF2), stat=alloc_err)
+    temp1 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+    temp2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+    
+    ! Bring fields to physical space
+    ! temporary storage because ifft overwrites input arrays!
+    temp1 = Aml
+    temp2 = Bml
+    call fftw_execute_dft_c2r(ipV, Aml, Amx) ! Vertical velocity Fourier to physical
+    call fftw_execute_dft_c2r(ipT, Bml, Bmx) ! Temperature Fourier to physical
+    call dgemm('n', 'n', NP, NF, NC, scale1, VM, NP, Amx, NC, scale2, Vyx, NP) ! Cheb to physical (VV)
+    call dgemm('n', 'n', NP, NF, NC, scale1, TM, NP, Bmx, NC, scale2, Tyx, NP) ! Cheb to physical (T)
+    Aml = temp1
+    Bml = temp2
+    
+    if (fprint == 0) then
+       ! Write out the fields
+       write(citer, "(I10)") 1000000000 + iter
+       fiter = citer(2:10)
+       call write_out_mat(Vyx, "VV/Vyx"//fiter)
+       call write_out_mat(Tyx, "Th/Tyx"//fiter)
+    end if
 
-! Use temperature arrays to get these sizes.  Could use V arrays too.
-NC  = size(Bml, 1)
-NF  = size(Bmx, 2)
-NP  = size(Tyx, 1)
-NF2 = NF/2 + 1
+    if (iprobe) then
+       ! Get trace of Vyx and Tyx
+       Vprobe = Vyx(ceiling(NP/2.0_dp), NF/2)
+       Tprobe = Tyx(ceiling(NP/2.0_dp), NF/2)
+    end if
 
-allocate(temp1(NC,NF2), temp2(NC,NF2), stat=alloc_err)
-temp1 = cmplx(0.0_dp, 0.0_dp, kind=dp)
-temp2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
+end if
 
-! Bring fields to physical space
-! temporary storage because ifft overwrites input arrays!
-temp1 = Aml
-temp2 = Bml
-call fftw_execute_dft_c2r(ipV, Aml, Amx) ! Vertical velocity Fourier to physical
-call fftw_execute_dft_c2r(ipT, Bml, Bmx) ! Temperature Fourier to physical
-call dgemm('n', 'n', NP, NF, NC, scale1, VM, NP, Amx, NC, scale2, Vyx, NP) ! Cheb to physical (VV)
-call dgemm('n', 'n', NP, NF, NC, scale1, TM, NP, Bmx, NC, scale2, Tyx, NP) ! Cheb to physical (T)
-Aml = temp1
-Bml = temp2
-
-! Get max of Vyx and Tyx and return them
-maxVyx = maxval(Vyx)
-maxTyx = maxval(Tyx)
-
-! Write out the fields
-call write_out_mat(Vyx, "VV/Vyx"//fiter)
-call write_out_mat(Tyx, "Th/Tyx"//fiter)
-
-end subroutine decay
+end subroutine probes
 
 subroutine update_dt(VM,TM,dt)
 
@@ -1192,7 +1198,7 @@ real(dp), dimension(:,:), intent(in)     :: DVM, DTM, D2VM, D3VM
 real(dp), dimension(:,:), intent(in)     :: GPVM, GPD2VM, GPD4VM
 real(dp)                                 :: dt_final, time
 real(dp)                                 :: wave, wave2, wave4
-real(dp)                                 :: maxVyx, maxTyx
+real(dp)                                 :: Vprobe, Tprobe
 real(dp), allocatable, dimension(:,:)    :: lhs, rhs
 real(dp), allocatable, dimension(:,:)    :: upsilon
 complex(dp), allocatable, dimension(:)   :: temprhs
