@@ -11,7 +11,7 @@ use makeICs
 use chebutils
 use fftw
 use write_pack
-use time_integrators, only: imex_rk, backward_euler, update_u, decay
+use time_integrators, only: imex_rk, backward_euler, update_u, probes
 use statutils, only: Nusselt 
 
 ! Set up basic problem parameters and fields
@@ -31,7 +31,7 @@ real(dp)                                 :: amp             ! Initial Temperatur
 real(dp)                                 :: Nuss            ! Nusselt number
 real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
-real(dp), parameter                      :: Ra = 1.0e7_dp, Pr = 7.0_dp
+real(dp), parameter                      :: Ra = 1.0e6_dp, Pr = 7.0_dp
 real(dp), parameter                      :: t_final = 100.0_dp
 real(dp)                                 :: dt      = 0.00025_dp
 
@@ -48,10 +48,10 @@ kappa = dsqrt(16.0_dp/(Pr*Ra))
 !NP = NC + 4
 !NF = 128
 
-! Ra = 4.0e+06
-NC = 100
+! Ra = 1.0e+06
+NC = 65
 NP = NC + 4
-NF = 128
+NF = 64
 
 ! Original params
 !NC = 45
