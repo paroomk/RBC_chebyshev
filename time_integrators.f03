@@ -29,23 +29,25 @@ real(dp) :: dh41, dh42, dh43, dh44
 contains
 
 subroutine imex_rk(NC, NF, dt, t_final, nu, kappa,      &
-                   PVEL, Pmj,VM,TM,DVM,DTM,D2VM,D3VM,   &
+                   PVEL, Pmj,VM,TM,DVM,DTM,DTMb,D2TM,D2VM,D3VM,   &
                    GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
 
 integer                 , intent(in)     :: NC, NF
 real(dp),                 intent(in)     :: dt, t_final, kappa, nu
 real(dp), dimension(:,:), intent(in)     :: PVEL, Pmj
-real(dp), dimension(:,:), intent(in)     :: VM, TM, DVM, DTM, D2VM, D3VM
+real(dp), dimension(:,:), intent(in)     :: VM, TM, DVM, DTM, DTMb, D2TM, D2VM, D3VM
 real(dp), dimension(:,:), intent(in)     :: PVM, PDVM, PTM, GPTM
 real(dp), dimension(:,:), intent(in)     :: GPVM, GPD2VM, GPD4VM
+real(dp)   , allocatable, dimension(:,:) :: K1Um, K2Um, K3Um, Um
 complex(dp), allocatable, dimension(:,:) :: K1V, K2V, K3V
 complex(dp), allocatable, dimension(:,:) :: K1T, K2T, K3T
 complex(dp), allocatable, dimension(:,:) :: K1hV, K2hV, K3hV, K4hV
 complex(dp), allocatable, dimension(:,:) :: K1hT, K2hT, K3hT, K4hT
+real(dp)   , allocatable, dimension(:,:) :: K1hUm, K2hUm, K3hUm, K4hUm
 real(dp)                                 :: dt_final, time
-real(dp)                                 :: Vprobe, Tprobe
+real(dp)                                 :: Vprobe, Tprobe, Nuss
 integer                                  :: tstep
-integer                                  :: NF2
+integer                                  :: NF2, NP
 integer, parameter                       :: interval=500 ! How often to write fields to file
 logical                                  :: iprobe=.true. ! Get time trace of fields
 
@@ -58,6 +60,7 @@ call set_imex_params(c1,c2,c3, d11,d21,d31, d12,d22,d32, d13,d23,d33, &
                      dh31,dh32,dh33,dh34, dh41,dh42,dh43,dh44)
 
 NF2 = NF/2 + 1
+NP = NC + 4
 
 allocate(K1T(NC,NF2), K1V(NC,NF2), stat=alloc_err)
 allocate(K2T(NC,NF2), K2V(NC,NF2), stat=alloc_err)
@@ -66,6 +69,10 @@ allocate(K1hT(NC,NF2), K1hV(NC,NF2), stat=alloc_err)
 allocate(K2hT(NC,NF2), K2hV(NC,NF2), stat=alloc_err)
 allocate(K3hT(NC,NF2), K3hV(NC,NF2), stat=alloc_err)
 allocate(K4hT(NC,NF2), K4hV(NC,NF2), stat=alloc_err)
+allocate(Um(NP,1)          , stat=alloc_err)
+
+allocate(K1Um(NC,1) , K2Um(NC,1) , K3Um(NC,1) , stat=alloc_err)
+allocate(K1hUm(NC,1), K2hUm(NC,1), K3hUm(NC,1), K4hUm(NC,1), stat=alloc_err)
 
 K1V = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2V = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -74,6 +81,10 @@ K3V = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K1T = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2T = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K3T = cmplx(0.0_dp, 0.0_dp, kind=dp)
+
+K1Um = 0.0_dp
+K2Um = 0.0_dp
+K3Um = 0.0_dp
 
 K1hV = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2hV = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -85,9 +96,14 @@ K2hT = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K3hT = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K4hT = cmplx(0.0_dp, 0.0_dp, kind=dp)
 
+K1hUm = 0.0_dp
+K2hUm = 0.0_dp
+K3hUm = 0.0_dp
+K4hUm = 0.0_dp
+Um = 0.0_dp
+
 time  = 0.0_dp
 tstep = 0
-
 open(unit=1500, file="Tprobe.txt", action="write", status="unknown", position="append")
 
 do ! while time < t_final
@@ -110,42 +126,48 @@ do ! while time < t_final
    else
       time = time + dt
       tstep = tstep + 1
+      call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
       write(*,*) "t = ", time, "dt = ", dt
+      open(unit=8000, file="Nusselt.txt", action="write", status="unknown", position="append")
+      write(8000,*) time, Nuss
    end if
 
-   call initrk(K1hV,K1hT, PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3VM,PTM)
-   call stage1(K1V,K1T,K2hV,K2hT,                        &
-               dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+   call initrk(K1hV,K1hT,K2hUm,PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,PTM)
+   call stage1(K1V,K1T,K1Um,K2hV,K2hT,K2hUm,                        &
+               dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,     &
-               K1hV,K1hT)
-   call stage2(K2V,K2T,K3hV,K3hT,                                & 
-               K1V,K1T,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+               K1hV,K1hT,K1hUm)
+   call stage2(K2V,K2T,K2Um,K3hV,K3hT,K3hUm,                                & 
+               K1V,K1T,K1Um,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,             &
-               K1hV,K2hV,K1hT,K2hT)
-   call stage3(K3V,K3T,K4hV,K4hT,                                        &
-               K1V,K1T,K2V,K2T,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+               K1hV,K2hV,K1hT,K2hT,K1hUm,K2hUm)
+   call stage3(K3V,K3T,K3Um,K4hV,K4hT,K4hUm,                                        &
+               K1V,K1T,K1Um,K2V,K2T,K2Um,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,                     &
-               K1hV,K2hV,K3hV,K1hT,K2hT,K3hT)
+               K1hV,K2hV,K3hV,K1hT,K2hT,K3hT,K1hUm,K2hUm,K3hUm)
 
    ! Update solution
    Aml = Aml + dt*(c1*(K1V+K2hV) + c2*(K2V+K3hV) + c3*(K3V+K4hV))
    Bml = Bml + dt*(c1*(K1T+K2hT) + c2*(K2T+K3hT) + c3*(K3T+K4hT))
+   Uml(:,1) = Uml(:,1) + &
+              cmplx(dt*(c1*(K1Um(:,1)+K2hUm(:,1))   + c2*(K2Um(:,1)+K3hUm(:,1)) + c3*(K3Um(:,1)+K4hUm(:,1))), 0.0_dp, kind=dp)
 
    ! Update horizontal velocity
-   call update_u(Pmj,DVM)
+!   call update_u(Pmj,D3VM)
 
    !Update dt
-   call update_dt(VM,TM,dt)
+   call update_dt(VM,DVM,TM,dt)
 end do
 
 close(unit=1500)
+close(unit=8000)
 
 !2000 format(E25.16E3, E25.16E3          )
 3000 format(E25.16E3, E25.16E3, E25.16E3)
 
 end subroutine imex_rk
 
-subroutine initrk(K1hV,K1hT, PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3VM,PTM)
+subroutine initrk(K1hV,K1hT,K1hUm,PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,PTM)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   !
@@ -167,18 +189,20 @@ subroutine initrk(K1hV,K1hT, PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2VM,D3
   !    D3VM   : Modes for 3rd derivative of vertical velocity
   !
   ! OUTPUT:
-  !    K1hV: First explicit stage for vertical velocity equation
-  !    K1hT: First explicit stage for temperature equation
+  !    K1hV : First explicit stage for vertical velocity equation
+  !    K1hT : First explicit stage for temperature equation
+  !    K1hUm: First explicit stage for mean flow equation
   !
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
 
 real(dp)   , dimension(:,:),              intent(in)  :: GPVM, GPD2VM, GPTM
 real(dp)   , dimension(:,:),              intent(in)  :: PVEL, Pmj, PVM
-real(dp)   , dimension(:,:),              intent(in)  :: VM, TM, DVM, DTM, D2VM, D3VM, PTM
+real(dp)   , dimension(:,:),              intent(in)  :: VM, TM, DVM, DTM, D2TM, D2VM, D3VM, PTM
 complex(dp), allocatable, dimension(:,:), intent(out) :: K1hV, K1hT
+real(dp)   , allocatable, dimension(:,:), intent(out) :: K1hUm
 real(dp)   , allocatable, dimension(:,:)              :: lhs
 real(dp)   , allocatable, dimension(:,:)              :: rhs
-real(dp)   , allocatable, dimension(:,:)              :: ups
+real(dp)   , allocatable, dimension(:,:)              :: ups, NLUml
 real(dp)   , allocatable, dimension(:)                :: Kre, Kim
 complex(dp), allocatable, dimension(:)                :: temp
 complex(dp), allocatable, dimension(:,:)              :: NLTml, NLVml
@@ -196,6 +220,7 @@ NC  = size(Bml,1)
 NF2 = size(Bml,2)
 
 allocate(K1hV(NC,NF2), K1hT(NC,NF2)  , stat=alloc_err)
+allocate(K1hUm(NC,1)                 , stat=alloc_err)
 allocate(lhs(NC,NC)                  , stat=alloc_err)
 allocate(rhs(NC,2)                   , stat=alloc_err)
 allocate(ups(NC,NC)                  , stat=alloc_err)
@@ -203,20 +228,23 @@ allocate(Kre(NC), Kim(NC)            , stat=alloc_err)
 allocate(ipiv(NC)                    , stat=alloc_err)
 allocate(temp(NC)                    , stat=alloc_err)
 allocate(NLTml(NC,NF2), NLVml(NC,NF2), stat=alloc_err)
+allocate(NLUml(NC,1)                 , stat=alloc_err)
 
 K1hV  = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K1hT  = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K1hUm = 0.0_dp
 lhs   = 0.0_dp
 rhs   = 0.0_dp
 ups   = 0.0_dp
 Kre   = 0.0_dp
 Kim   = 0.0_dp
+NLUml = 0.0_dp
 temp  = cmplx(0.0_dp, 0.0_dp, kind=dp)
 NLTml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 NLVml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 ipiv  = 0
 
-call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml,Bml)
+call nonlinear_terms(NLVml,NLTml,NLUml,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,Aml,Bml,Uml)
 
 do i = 1,NF2
    ! Vertical velocity equation
@@ -251,9 +279,15 @@ do i = 1,NF2
    K1hT(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 end do
 
+rhs(:,1) = -NLUml(:,1)
+
+ups = PTM ! Use ups as a temp array for now
+call dgesv(NC, 1, ups, NC, ipiv, rhs(:,1), NC, info)
+K1hUm(:,1) = rhs(:,1)
+
 end subroutine initrk
 
-subroutine nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aiml,Biml)
+subroutine nonlinear_terms(NLVml,NLTml,NLUml,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,Aiml,Biml,Uiml)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   ! Computation of nonlinear terms
@@ -275,15 +309,18 @@ subroutine nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aiml,Bi
   ! OUTPUT:
   !        NLVml: Nonlinear term for VV equation
   !        NLTml: Nonlinear term for temperature equation
+  !        NLUml: Nonlinear term for mean flow equation
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
 
 real(dp)   ,              dimension(:,:), intent(in)  :: PVEL, Pmj, TM
-real(dp)   ,              dimension(:,:), intent(in)  :: VM, DTM, DVM, D2VM, D3VM 
-complex(dp),              dimension(:,:), intent(in)  :: Aiml, Biml
+real(dp)   ,              dimension(:,:), intent(in)  :: VM, DTM, DVM, D2TM, D2VM, D3VM 
+complex(dp),              dimension(:,:), intent(in)  :: Aiml, Biml, Uiml
+real(dp)   , allocatable, dimension(:,:), intent(out) :: NLUml
 complex(dp), allocatable, dimension(:,:), intent(out) :: NLVml, NLTml
-complex(dp), allocatable, dimension(:,:)              :: DTml
+complex(dp), allocatable, dimension(:,:)              :: DTml, Um
 complex(dp), allocatable, dimension(:,:)              :: lapV, lapU
-real(dp)   , allocatable, dimension(:,:)              :: Uiyx, DTyx
+real(dp)   , allocatable, dimension(:,:)              :: Uiyx, DTyx, UVyx, temp
+real(dp)   , allocatable, dimension(:,:)              :: DUyx, DVyx
 real(dp)   , allocatable, dimension(:,:)              :: NLVyx, NLVmx, NLTyx, NLTmx
 real(dp)   , allocatable, dimension(:,:)              :: lap
 real(dp)                                              :: alpha, wave, wave2
@@ -303,8 +340,14 @@ NF  = size(Bmx,2)
 
 allocate(NLVml(NC,NF2)     , stat=alloc_err)
 allocate(NLTml(NC,NF2)     , stat=alloc_err)
+allocate(NLUml(NC,1)       , stat=alloc_err)
+allocate(temp(NC,1)        , stat=alloc_err)
 allocate(DTml(NC,NF2)      , stat=alloc_err)
+allocate(Um(NP,1)          , stat=alloc_err)
 allocate(Uiyx(NP,NF)       , stat=alloc_err)
+allocate(DUyx(NP,NF)       , stat=alloc_err)
+allocate(DVyx(NP,NF)       , stat=alloc_err)
+allocate(UVyx(NP,NF)       , stat=alloc_err)
 allocate(DTyx(NP,NF)       , stat=alloc_err)
 allocate(NLVyx(NP,NF)      , stat=alloc_err)
 allocate(NLVmx(NC,NF)      , stat=alloc_err)
@@ -319,8 +362,14 @@ NLTml = cmplx(0.0_dp, 0.0_dp, kind=dp)
 DTml  = cmplx(0.0_dp, 0.0_dp, kind=dp)
 lapV  = cmplx(0.0_dp, 0.0_dp, kind=dp)
 lapU  = cmplx(0.0_dp, 0.0_dp, kind=dp)
+Um    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 Uiyx  = 0.0_dp
+UVyx  = 0.0_dp
 DTyx  = 0.0_dp
+DUyx  = 0.0_dp
+DVyx  = 0.0_dp
+temp  = 0.0_dp
+NLUml = 0.0_dp
 NLVyx = 0.0_dp
 NLVmx = 0.0_dp
 NLTyx = 0.0_dp
@@ -338,14 +387,21 @@ do i = 1,NF2
      lapU(:,i)    = CI*matmul(lap, Aiml(:,i))/wave
      fft1_ml(:,i) = CI*Aiml(:,i)/wave
    else
-     lapU(:,i)    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+     !lapU(:,i)    = cmplx(0.0_dp, 0.0_dp, kind=dp)
      fft1_ml(:,i) = cmplx(0.0_dp, 0.0_dp, kind=dp)
+     lapU(:,1)    = matmul(-wave2*TM + D2TM, Uiml(:,1))
    end if
 end do
 
 ! Bring fields to physical space
 call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Horizontal velocity Fourier to physical
 Uiyx = matmul(DVM, fft1_mx)
+DUyx = matmul(D2VM, fft1_mx)
+
+fft1_ml = cmplx(0.0_dp, 0.0_dp, kind=dp)
+fft1_ml(:,1) = Uiml(:,1)
+call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Horizontal velocity(mean) Fourier to physical
+Uiyx = Uiyx + matmul(TM, fft1_mx)
 
 fft1_ml = DTml
 call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Temperature deriv Fourier to physical
@@ -358,6 +414,23 @@ Tyx = matmul(DTM, fft1_mx)
 fft1_ml = Aiml
 call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Vertical velocity Fourier to physical
 Vyx = matmul(VM, fft1_mx)
+DVyx = matmul(DVM, fft1_mx)
+
+fft1_ml = cmplx(0.0_dp, 0.0_dp, kind=dp)
+fft1_ml(:,1) = Uiml(:,1)
+call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Horizontal velocity(mean) Fourier to physical
+DUyx = DUyx + matmul(DTM, fft1_mx)
+
+fft1_yx = Uiyx*DVyx + Vyx*DUyx
+
+do j = 1,NP
+   do i = 1,NF
+      Um(j,1) = Um(j,1) + fft1_yx(j,i)/real(NF, dp)
+   end do
+end do
+ 
+NLUml = matmul(Pmj,real(Um))
+NLUml = 0.0_dp
 
 fft1_yl = lapV 
 call fftw_execute_dft_c2r(ipfy, fft1_yl, fft1_yx) ! Laplacian of VV from Fourier to physical
@@ -392,6 +465,9 @@ do i = 1,NF2
       if ((l >= NF_cut) .or. (j >= NC_cut)) then
          NLTml(j,i) = cmplx(0.0_dp, 0.0_dp, kind=dp)
          NLVml(j,i) = cmplx(0.0_dp, 0.0_dp, kind=dp)
+         if (j>=NC_cut) then
+            NLUml(j,1) = cmplx(0.0_dp, 0.0_dp, kind=dp)
+         end if
       else
          NLVml(j,i) = CI*wave*NLVml(j,i)
       end if
@@ -400,10 +476,10 @@ end do
 
 end subroutine nonlinear_terms
 
-subroutine stage1(K1V,K1T,K2hV,K2hT,                           &
-                 dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+subroutine stage1(K1V,K1T,K1Um,K2hV,K2hT,K2hUm,                &
+                 dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                  GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,         &
-                 K1hV,K1hT)
+                 K1hV,K1hT,K1hUm)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   ! Performs first stage of IMEX-RK 3-4-3 method
@@ -444,22 +520,24 @@ implicit none
 real(dp)   ,                              intent(in)  :: dt, nu, kappa
 real(dp)   , dimension(:,:),              intent(in)  :: GPVM, GPD2VM, GPD4VM
 real(dp)   , dimension(:,:),              intent(in)  :: PVEL, Pmj, VM, TM
-real(dp)   , dimension(:,:),              intent(in)  :: DVM, DTM, D2VM, D3VM, GPTM
+real(dp)   , dimension(:,:),              intent(in)  :: DVM, DTM, D2TM, D2VM, D3VM, GPTM
 real(dp)   , dimension(:,:),              intent(in)  :: PVM, PDVM, PTM
+real(dp)   , allocatable, dimension(:,:), intent(in)  :: K1hUm
 complex(dp), allocatable, dimension(:,:), intent(in)  :: K1hV, K1hT
 complex(dp), allocatable, dimension(:,:), intent(out) :: K1V, K1T, K2hV, K2hT
+real(dp)   , allocatable, dimension(:,:), intent(out) :: K1Um, K2hUm
 real(dp)   , allocatable, dimension(:,:)              :: lhs
 real(dp)   , allocatable, dimension(:,:)              :: rhs
 real(dp)   , allocatable, dimension(:,:)              :: tempmat, ups
-real(dp)   , allocatable, dimension(:,:)              :: Kmat
+real(dp)   , allocatable, dimension(:,:)              :: Kmat, NLUml
 real(dp)   , allocatable, dimension(:)                :: ore, oim
 real(dp)   , allocatable, dimension(:)                :: Kre, Kim
 complex(dp), allocatable, dimension(:)                :: temp
-complex(dp), allocatable, dimension(:,:)              :: Aml1, Bml1
+complex(dp), allocatable, dimension(:,:)              :: Aml1, Bml1, Uml1
 complex(dp), allocatable, dimension(:,:)              :: NLVml, NLTml
 real(dp)                                              :: wave, wave2, wave4
 integer                                               :: i
-integer                                               :: NC, NP, NF2
+integer                                               :: NC, NP, NF, NF2
 
 ! Some LAPACK and BLAS variables
 integer,     allocatable, dimension(:)                :: ipiv
@@ -469,10 +547,12 @@ integer , parameter                                   :: incx=1, incy=1
 
 NC  = size(Bml,1)
 NF2 = size(Bml,2)
+NF  = size(Bmx,2)
 NP  = size(Tyx,1)
 
 allocate(K1V(NC,NF2), K1T(NC,NF2)    , stat=alloc_err)
 allocate(K2hV(NC,NF2),K2hT(NC,NF2)   , stat=alloc_err)
+allocate(K2hUm(NC,1),K1Um(NC,1)      , stat=alloc_err)
 allocate(lhs(NC,NC)                  , stat=alloc_err)
 allocate(rhs(NC,2)                   , stat=alloc_err)
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
@@ -482,12 +562,16 @@ allocate(ore(NP), oim(NP)            , stat=alloc_err)
 allocate(ipiv(NC)                    , stat=alloc_err)
 allocate(temp(NC)                    , stat=alloc_err)
 allocate(Aml1(NC,NF2), Bml1(NC,NF2)  , stat=alloc_err)
+allocate(Uml1(NC,NF2)                , stat=alloc_err)
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
+allocate(NLUml(NC,1)                 , stat=alloc_err)
 
 K1T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K1V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2hV    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2hT    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K1Um    = 0.0_dp
+K2hUm   = 0.0_dp
 lhs     = 0.0_dp
 rhs     = 0.0_dp
 tempmat = 0.0_dp
@@ -497,6 +581,7 @@ Kre     = 0.0_dp
 Kim     = 0.0_dp
 ore     = 0.0_dp
 oim     = 0.0_dp
+NLUml   = 0.0_dp
 ipiv    = 0
 temp    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 Aml1    = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -565,7 +650,17 @@ do i = 1,NF2
    Bml1(:,i) = cmplx(Kre, Kim, kind=dp)
 end do
 
-call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml1,Bml1)
+lhs      = PTM - dt*d11*nu*eye
+rhs(:,1) = real(Uml(:,1)) + dt*dh21*K1hUm(:,1) 
+call dgesv(NC, 1, lhs, NC, ipiv, rhs(:,1), NC, info)
+Kmat = nu*eye
+call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,1), incx, scale2, Kre, incy)
+K1Um(:,1) = Kre
+
+call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,1), incx, scale2, Kre, incy)
+Uml1(:,1) = cmplx(Kre, 0.0_dp, kind=dp)
+
+call nonlinear_terms(NLVml,NLTml,NLUml,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,Aml1,Bml1,Uml1)
 
 do i = 1,NF2
    wave  = kx(i)
@@ -594,12 +689,18 @@ do i = 1,NF2
    K2hV(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 end do
 
+rhs(:,1) = -NLUml(:,1)
+
+ups = PTM ! Use ups as a temp array for now
+call dgesv(NC, 1, ups, NC, ipiv, rhs(:,1), NC, info)
+K2hUm(:,1) = rhs(:,1)
+
 end subroutine stage1
 
-subroutine stage2(K2V,K2T,K3hV,K3hT,                                 &
-               K1V,K1T,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+subroutine stage2(K2V,K2T,K2Um,K3hV,K3hT,K3hUm,                      &
+               K1V,K1T,K1Um,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,                 &
-               K1hV,K2hV,K1hT,K2hT)
+               K1hV,K2hV,K1hT,K2hT,K1hUm,K2hUm)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   ! Performs second stage of IMEX-RK 3-4-3 method
@@ -644,24 +745,26 @@ implicit none
 real(dp)   ,                              intent(in)  :: dt, nu, kappa
 real(dp)   , dimension(:,:),              intent(in)  :: GPVM, GPD2VM, GPD4VM
 real(dp)   , dimension(:,:),              intent(in)  :: PVEL, Pmj, TM, VM
-real(dp)   , dimension(:,:),              intent(in)  :: DVM,DTM,D2VM, D3VM
+real(dp)   , dimension(:,:),              intent(in)  :: DVM,DTM,D2TM,D2VM, D3VM
 real(dp)   , dimension(:,:),              intent(in)  :: GPTM, PVM, PDVM, PTM
+real(dp)   , allocatable, dimension(:,:), intent(in)  :: K1Um, K1hUm, K2hUm
 complex(dp), allocatable, dimension(:,:), intent(in)  :: K1V, K1T
 complex(dp), allocatable, dimension(:,:), intent(in)  :: K1hV, K2hV
 complex(dp), allocatable, dimension(:,:), intent(in)  :: K1hT, K2hT
 complex(dp), allocatable, dimension(:,:), intent(out) :: K2V, K2T, K3hV, K3hT
+real(dp)   , allocatable, dimension(:,:), intent(out) :: K2Um, K3hUm
 real(dp)   , allocatable, dimension(:,:)              :: lhs
 real(dp)   , allocatable, dimension(:,:)              :: rhs
 real(dp)   , allocatable, dimension(:,:)              :: tempmat, ups
-real(dp)   , allocatable, dimension(:,:)              :: Kmat
+real(dp)   , allocatable, dimension(:,:)              :: Kmat, NLUml
 real(dp)   , allocatable, dimension(:)                :: ore, oim
 real(dp)   , allocatable, dimension(:)                :: Kre, Kim
 complex(dp), allocatable, dimension(:)                :: temp
-complex(dp), allocatable, dimension(:,:)              :: Aml2, Bml2
+complex(dp), allocatable, dimension(:,:)              :: Aml2, Bml2, Uml2
 complex(dp), allocatable, dimension(:,:)              :: NLVml, NLTml
 real(dp)                                              :: wave, wave2, wave4
 integer                                               :: i
-integer                                               :: NC, NP, NF2
+integer                                               :: NC, NP, NF2, NF
 
 ! Some LAPACK and BLAS variables
 integer,     allocatable, dimension(:)                :: ipiv
@@ -670,11 +773,13 @@ real(dp), parameter                                   :: scale1=1.0_dp, scale2=0
 integer , parameter                                   :: incx=1, incy=1
 
 NC  = size(Bml,1)
+NF  = size(Bmx,2)
 NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(K2V(NC,NF2), K2T(NC,NF2)    , stat=alloc_err)
 allocate(K3hV(NC,NF2),K3hT(NC,NF2)   , stat=alloc_err)
+allocate(K2Um(NC,1),K3hUm(NC,1)      , stat=alloc_err)
 allocate(lhs(NC,NC)                  , stat=alloc_err)
 allocate(rhs(NC,2)                   , stat=alloc_err)
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
@@ -684,12 +789,16 @@ allocate(ore(NP), oim(NP)            , stat=alloc_err)
 allocate(ipiv(NC)                    , stat=alloc_err)
 allocate(temp(NC)                    , stat=alloc_err)
 allocate(Aml2(NC,NF2), Bml2(NC,NF2)  , stat=alloc_err)
+allocate(Uml2(NC,NF2)                , stat=alloc_err)
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
+allocate(NLUml(NC,1)                 , stat=alloc_err)
 
 K2T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K2V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K3hV    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K3hT    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K2Um    = 0.0_dp
+K3hUm   = 0.0_dp
 lhs     = 0.0_dp
 rhs     = 0.0_dp
 tempmat = 0.0_dp
@@ -699,6 +808,7 @@ Kre     = 0.0_dp
 Kim     = 0.0_dp
 ore     = 0.0_dp
 oim     = 0.0_dp
+NLUml   = 0.0_dp
 ipiv    = 0
 temp    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 Aml2    = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -767,7 +877,17 @@ do i = 1,NF2
    Bml2(:,i) = cmplx(Kre, Kim, kind=dp)
 end do
 
-call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml2,Bml2)
+lhs      = PTM - dt*d22*nu*eye
+rhs(:,1) = real(Uml(:,1)) + dt*(d21*K1Um(:,1) + dh31*K1hUm(:,1) + dh32*K2hUm(:,1))
+call dgesv(NC, 1, lhs, NC, ipiv, rhs(:,1), NC, info)
+Kmat = nu*eye
+call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,1), incx, scale2, Kre, incy)
+K2Um(:,1) = Kre
+
+call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,1), incx, scale2, Kre, incy)
+Uml2(:,1) = cmplx(Kre, 0.0_dp, kind=dp)
+
+call nonlinear_terms(NLVml,NLTml,NLUml,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,Aml2,Bml2,Uml2)
 
 do i = 1,NF2
    wave  = kx(i)
@@ -796,12 +916,18 @@ do i = 1,NF2
    K3hV(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 end do
 
+rhs(:,1) = -NLUml(:,1)
+
+ups = PTM ! Use ups as a temp array for now
+call dgesv(NC, 1, ups, NC, ipiv, rhs(:,1), NC, info)
+K3hUm(:,1) = rhs(:,1)
+
 end subroutine stage2
 
-subroutine stage3(K3V,K3T,K4hV,K4hT,                                          &
-               K1V,K1T,K2V,K2T,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+subroutine stage3(K3V,K3T,K3Um,K4hV,K4hT,K4hUm,                              &
+               K1V,K1T,K1Um,K2V,K2T,K2Um,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,                          &
-               K1hV,K2hV,K3hV,K1hT,K2hT,K3hT)
+               K1hV,K2hV,K3hV,K1hT,K2hT,K3hT,K1hUm,K2hUm,K3hUm)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   ! Performs third stage of IMEX-RK 3-4-3 method
@@ -850,24 +976,27 @@ implicit none
 real(dp)   ,                              intent(in)  :: dt, nu, kappa
 real(dp)   , dimension(:,:),              intent(in)  :: GPVM, GPD2VM, GPD4VM
 real(dp)   , dimension(:,:),              intent(in)  :: PVEL, Pmj, VM, TM
-real(dp)   , dimension(:,:),              intent(in)  :: DVM, DTM, D2VM, D3VM, GPTM
+real(dp)   , dimension(:,:),              intent(in)  :: DVM, DTM, D2TM, D2VM, D3VM, GPTM
 real(dp)   , dimension(:,:),              intent(in)  :: PVM, PDVM, PTM
+real(dp)   , allocatable, dimension(:,:), intent(in)  :: K1hUm, K2hUm, K3hUm
+real(dp)   , allocatable, dimension(:,:), intent(in)  :: K1Um, K2Um
 complex(dp), allocatable, dimension(:,:), intent(in)  :: K1V, K1T, K2V, K2T
 complex(dp), allocatable, dimension(:,:), intent(in)  :: K1hV, K2hV, K3hV
 complex(dp), allocatable, dimension(:,:), intent(in)  :: K1hT, K2hT, K3hT
 complex(dp), allocatable, dimension(:,:), intent(out) :: K3V, K3T, K4hV, K4hT
+real(dp)   , allocatable, dimension(:,:), intent(out) :: K3Um, K4hUm
 real(dp)   , allocatable, dimension(:,:)              :: lhs
 real(dp)   , allocatable, dimension(:,:)              :: rhs
 real(dp)   , allocatable, dimension(:,:)              :: tempmat, ups
-real(dp)   , allocatable, dimension(:,:)              :: Kmat
+real(dp)   , allocatable, dimension(:,:)              :: Kmat, NLUml
 real(dp)   , allocatable, dimension(:)                :: Kre, Kim
 real(dp), allocatable, dimension(:)                   :: ore, oim
 complex(dp), allocatable, dimension(:)                :: temp
-complex(dp), allocatable, dimension(:,:)              :: Aml3, Bml3
+complex(dp), allocatable, dimension(:,:)              :: Aml3, Bml3, Uml3
 complex(dp), allocatable, dimension(:,:)              :: NLVml, NLTml
 real(dp)                                              :: wave, wave2, wave4
 integer                                               :: i
-integer                                               :: NC, NP, NF2
+integer                                               :: NC, NP, NF2, NF
 
 ! Some LAPACK and BLAS variables
 integer,     allocatable, dimension(:)                :: ipiv
@@ -876,11 +1005,13 @@ real(dp), parameter                                   :: scale1=1.0_dp, scale2=0
 integer , parameter                                   :: incx=1, incy=1
 
 NC  = size(Bml,1)
+NF  = size(Bmx,2)
 NF2 = size(Bml,2)
 NP  = size(Tyx,1)
 
 allocate(K3V(NC,NF2), K3T(NC,NF2)    , stat=alloc_err)
 allocate(K4hV(NC,NF2),K4hT(NC,NF2)   , stat=alloc_err)
+allocate(K4hUm(NC,1),K3Um(NC,1)      , stat=alloc_err)
 allocate(lhs(NC,NC)                  , stat=alloc_err)
 allocate(rhs(NC,2)                   , stat=alloc_err)
 allocate(tempmat(NC,NC), ups(NC,NC)  , stat=alloc_err)
@@ -890,12 +1021,16 @@ allocate(ore(NP), oim(NP)            , stat=alloc_err)
 allocate(ipiv(NC)                    , stat=alloc_err)
 allocate(temp(NC)                    , stat=alloc_err)
 allocate(Aml3(NC,NF2), Bml3(NC,NF2)  , stat=alloc_err)
+allocate(Uml3(NC,NF2)                , stat=alloc_err)
 allocate(NLVml(NC,NF2), NLTml(NC,NF2), stat=alloc_err)
+allocate(NLUml(NC,1)                 , stat=alloc_err)
 
 K3T     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K3V     = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K4hV    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 K4hT    = cmplx(0.0_dp, 0.0_dp, kind=dp)
+K3Um    = 0.0_dp
+K4hUm   = 0.0_dp
 lhs     = 0.0_dp
 rhs     = 0.0_dp
 tempmat = 0.0_dp
@@ -905,6 +1040,7 @@ Kre     = 0.0_dp
 Kim     = 0.0_dp
 ore     = 0.0_dp
 oim     = 0.0_dp
+NLUml   = 0.0_dp
 ipiv    = 0
 temp    = cmplx(0.0_dp, 0.0_dp, kind=dp)
 Aml3    = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -973,7 +1109,19 @@ do i = 1,NF2
    Bml3(:,i) = cmplx(Kre, Kim, kind=dp)
 end do
 
-call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml3,Bml3)
+lhs      = PTM - dt*d33*nu*eye
+rhs(:,1) = real(Uml(:,1)) + dt*(d31*K1Um(:,1) + d32*K2Um(:,1) + dh41*K1hUm(:,1) + dh42*K2hUm(:,1) + dh43*K3hUm(:,1))
+
+call dgesv(NC, 1, lhs, NC, ipiv, rhs(:,1), NC, info)
+
+Kmat = nu*eye
+call dgemv('n', NC, NC, scale1, Kmat, NC, rhs(:,1), incx, scale2, Kre, incy)
+K3Um(:,1) = Kre
+
+call dgemv('n', NC, NC, scale1, PTM, NC, rhs(:,1), incx, scale2, Kre, incy)
+Uml3(:,1) = cmplx(Kre, 0.0_dp, kind=dp)
+
+call nonlinear_terms(NLVml,NLTml,NLUml,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,Aml3,Bml3,Uml3)
 
 do i = 1,NF2
    wave  = kx(i)
@@ -1002,9 +1150,15 @@ do i = 1,NF2
    K4hV(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
 end do
 
+rhs(:,1) = -NLUml(:,1)
+
+ups = PTM ! Use ups as a temp array for now
+call dgesv(NC, 1, ups, NC, ipiv, rhs(:,1), NC, info)
+K4hUm(:,1) = rhs(:,1)
+
 end subroutine stage3
 
-subroutine update_u(Pmj,DVM)
+subroutine update_u(Pmj,D3VM)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   ! Updates horizontal velocity 
@@ -1018,12 +1172,12 @@ subroutine update_u(Pmj,DVM)
 
 implicit none
 
-real(dp),              dimension(:,:), intent(in)  :: Pmj, DVM
+real(dp),              dimension(:,:), intent(in)  :: Pmj, D3VM
 real(dp), allocatable, dimension(:)                :: ore, oim
 real(dp), allocatable, dimension(:)                :: Kre, Kim
 real(dp)                                           :: wave
 integer                                            :: i
-integer                                            :: NC, NP, NF2
+integer                                            :: NC, NP, NF, NF2
 
 ! Some LAPACK and BLAS variables
 integer,  allocatable, dimension(:)                :: ipiv
@@ -1032,6 +1186,7 @@ integer , parameter                                :: incx=1, incy=1
 
 NC  = size(Bml,1)
 NF2 = size(Bml,2)
+NF  = size(Bmx,2)
 NP  = size(Tyx,1)
 
 allocate(Kre(NC), Kim(NC), stat=alloc_err)
@@ -1050,8 +1205,8 @@ do i = 1,NF2
 
    ! Get Uml
    if (i /= 1) then
-      call dgemv('n', NP, NC, scale1, DVM,  NP, real (Aml(:,i)), incx, scale2, ore, incy)
-      call dgemv('n', NP, NC, scale1, DVM,  NP, aimag(Aml(:,i)), incx, scale2, oim, incy)
+      call dgemv('n', NP, NC, scale1, D3VM,  NP, real (Aml(:,i)), incx, scale2, ore, incy)
+      call dgemv('n', NP, NC, scale1, D3VM,  NP, aimag(Aml(:,i)), incx, scale2, oim, incy)
       call dgemv('n', NC, NP, scale1, Pmj,  NC, ore, incx, scale2, Kre, incy)
       call dgemv('n', NC, NP, scale1, Pmj,  NC, oim, incx, scale2, Kim, incy)
       Uml(:,i) = CI*cmplx(Kre, Kim, kind=dp)/wave
@@ -1109,6 +1264,7 @@ if ( (fprint == 0).or.(iprobe)) then
        fiter = citer(2:10)
        call write_out_mat(Vyx, "VV/Vyx"//fiter)
        call write_out_mat(Tyx, "Th/Tyx"//fiter)
+       call write_out_mat(Uyx, "HV/Uyx"//fiter)
     end if
 
     if (iprobe) then
@@ -1121,15 +1277,15 @@ end if
 
 end subroutine probes
 
-subroutine update_dt(VM,TM,dt)
+subroutine update_dt(VM,DVM,TM,dt)
 
 implicit none
 real(dp),parameter                       :: cfl = 1.0_dp
 real(dp),parameter                       :: dt_ramp = 5.0_dp
-real(dp), dimension(:,:), intent(in)     :: VM, TM
+real(dp), dimension(:,:), intent(in)     :: VM, DVM, TM
 real(dp)                                 :: tmpmax,tmp
 real(dp)                                 :: dt,dt_old
-real(dp)                                 :: dxmin,dymin,alpha
+real(dp)                                 :: dxmin,dymin,alpha,wave
 complex(dp), allocatable, dimension(:,:) :: temp1, temp2
 integer                                  :: NP, NF, NC, NF2
 integer                                  :: ii,jj
@@ -1151,7 +1307,6 @@ temp2 = cmplx(0.0_dp, 0.0_dp, kind=dp)
 temp1 = Aml
 temp2 = Uml
 
-
 call fftw_execute_dft_c2r(ipV, Aml, Amx) ! Vertical velocity Fourier to physical
 call fftw_execute_dft_c2r(ipU, Uml, Umx) ! Horizontal velocity Fourier to physical
 
@@ -1160,6 +1315,20 @@ call dgemm('n', 'n', NP, NF, NC, scale1, TM, NP, Umx, NC, scale2, Uyx, NP) ! Che
 
 Aml = temp1
 Uml = temp2
+
+Uyx = matmul(TM, Umx)
+
+do ii = 1,NF2
+   wave  = kx(ii)
+   if (ii /= 1) then
+     fft1_ml(:,ii) = CI*Aml(:,ii)/wave
+   else
+     fft1_ml(:,ii) = cmplx(0.0_dp, 0.0_dp, kind=dp)
+   end if
+end do
+
+call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Horizontal velocity Fourier to physical
+Uyx = matmul(DVM, fft1_mx)
 
 alpha = kx(2)
 
@@ -1188,20 +1357,20 @@ endif
 end subroutine update_dt
 
 subroutine backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-                          PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
+                          PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2TM,D2VM,D3VM, &
                           GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 integer                 , intent(in)     :: NC, NF
 real(dp),                 intent(in)     :: dt, t_final, kappa, nu
 real(dp), dimension(:,:), intent(in)     :: VM, TM, PVM, PTM, GPTM
 real(dp), dimension(:,:), intent(in)     :: PVEL, Pmj
-real(dp), dimension(:,:), intent(in)     :: DVM, DTM, DTMb, D2VM, D3VM
+real(dp), dimension(:,:), intent(in)     :: DVM, DTM, D2TM, DTMb, D2VM, D3VM
 real(dp), dimension(:,:), intent(in)     :: GPVM, GPD2VM, GPD4VM
 real(dp)                                 :: dt_final, time
 real(dp)                                 :: wave, wave2, wave4
 real(dp)                                 :: Vprobe, Tprobe, Nuss
 real(dp), allocatable, dimension(:,:)    :: lhs, rhs
-real(dp), allocatable, dimension(:,:)    :: upsilon
+real(dp), allocatable, dimension(:,:)    :: upsilon, NLUml
 complex(dp), allocatable, dimension(:)   :: temprhs
 complex(dp), allocatable, dimension(:,:) :: rhsT_hold, rhsV_hold
 complex(dp), allocatable, dimension(:,:) :: NLVml, NLTml
@@ -1225,9 +1394,11 @@ allocate(rhsT_hold(NC,NF2), stat=alloc_err)
 allocate(rhsV_hold(NC,NF2), stat=alloc_err)
 allocate(NLTml(NC,NF2)    , stat=alloc_err)
 allocate(NLVml(NC,NF2)    , stat=alloc_err)
+allocate(NLUml(NC,1)      , stat=alloc_err)
 upsilon   = 0.0_dp
 lhs       = 0.0_dp
 rhs       = 0.0_dp
+NLUml     = 0.0_dp
 ipiv      = 0
 temprhs   = cmplx(0.0_dp, 0.0_dp, kind=dp)
 rhsT_hold = cmplx(0.0_dp, 0.0_dp, kind=dp)
@@ -1292,7 +1463,7 @@ do ! while time < t_final
       rhsT_hold(:,i) = temprhs + dt*cmplx(rhs(:,1), rhs(:,2), kind=dp)
    end do
 
-   call nonlinear_terms(NLVml,NLTml, PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM,Aml,Bml)
+   call nonlinear_terms(NLVml,NLTml,NLUml,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,Aml,Bml,Uml)
 
    do i = 1,NF2
       wave  = kx(i)
@@ -1317,6 +1488,7 @@ do ! while time < t_final
       call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
       ! Update solution
       Bml(:,i) = cmplx(rhs(:,1), rhs(:,2), kind=dp)
+
    end do
 
 end do
