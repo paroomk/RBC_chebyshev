@@ -7,7 +7,7 @@ LDFLAGS   = -I/usr/local/Cellar/fftw/3.3.6-pl2/include
 
 MAIN = TC
 
-OBJECTS = types.o fftw.o global.o write_pack.o makeICs.o chebutils.o time_integrators.o statutils.o $(MAIN).o
+OBJECTS = types.o fftw.o global.o write_pack.o makeICs.o chebutils.o statutils.o time_integrators.o $(MAIN).o
 PROGRAMS = $(MAIN).exe
 
 all: $(PROGRAMS)
@@ -33,11 +33,11 @@ makeICs.o : makeICs.f03
 chebutils.o : chebutils.f03
 	$(FC) $(FFLAGS) chebutils.f03
 
-time_integrators.o : time_integrators.f03
-	$(FC) $(FFLAGS) time_integrators.f03
-
 statutils.o : statutils.f03
 	$(FC) $(FFLAGS) statutils.f03
+
+time_integrators.o : time_integrators.f03
+	$(FC) $(FFLAGS) time_integrators.f03
 
 $(MAIN).o : $(MAIN).f03
 	$(FC) $(FFLAGS) $(MAIN).f03
