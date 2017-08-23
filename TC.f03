@@ -17,7 +17,7 @@ use statutils, only: Nusselt
 ! Set up basic problem parameters and fields
 integer                                  :: NC, NP, NF      ! Problem size
 real(dp), allocatable, dimension(:,:)    :: Cjm, Pmj        ! Cheb matrices
-real(dp), allocatable, dimension(:,:)    :: TM, DTM, DTMb   ! Temperature modes
+real(dp), allocatable, dimension(:,:)    :: TM,DTM,D2TM,DTMb! Temperature modes
 real(dp), allocatable, dimension(:,:)    :: VM, DVM         ! Velocity
 real(dp), allocatable, dimension(:,:)    :: D2VM, D3VM      ! modes
 real(dp), allocatable, dimension(:,:)    :: PVM, PTM, PD2TM ! Projected Galerkin for T-eq
@@ -31,9 +31,9 @@ real(dp)                                 :: amp             ! Initial Temperatur
 real(dp)                                 :: Nuss            ! Nusselt number
 real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
-real(dp), parameter                      :: Ra = 1.0e6_dp, Pr = 7.0_dp
-real(dp), parameter                      :: t_final = 100.0_dp
-real(dp)                                 :: dt      = 0.00025_dp
+real(dp), parameter                      :: Ra = 2E4_dp, Pr = 7.0_dp
+real(dp), parameter                      :: t_final = 200.0_dp
+real(dp)                                 :: dt      = 5E-3_dp
 
 logical                                  :: read_ICs = .false.
 real(dp)                                 :: x, dx
@@ -48,8 +48,8 @@ kappa = dsqrt(16.0_dp/(Pr*Ra))
 !NP = NC + 4
 !NF = 128
 
-! Ra = 1.0e+06
-NC = 65
+! Ra = 4.0e+06
+NC = 40
 NP = NC + 4
 NF = 64
 
@@ -100,6 +100,7 @@ Pmj = 0.0_dp
 
 ! Allocate Galerkin trial functions
 allocate(TM(NP,NC)    , DTM(NP,NC)    , stat=alloc_err)
+allocate(D2TM(NP,NC)                  , stat=alloc_err)
 allocate(VM(NP,NC)    , DVM(NP,NC)    , stat=alloc_err)
 allocate(D2VM(NP,NC)  , D3VM(NP,NC)   , stat=alloc_err)
 allocate(PTM(NC,NC)   , PD2TM(NC,NC)  , stat=alloc_err)
@@ -111,6 +112,7 @@ allocate(DTMb(1,NC)                   , stat=alloc_err)
 
 TM        = 0.0_dp
 DTM       = 0.0_dp
+D2TM      = 0.0_dp
 DTMb      = 0.0_dp
 VM        = 0.0_dp
 DVM       = 0.0_dp
@@ -147,7 +149,9 @@ kx = alpha*kx
 
 ! Get the Chebyshev Galerkin functions
 call makeVTM(VM,TM,DVM,DTM,DTMb,D2VM,D3VM,Cjm,Pmj, NC,NP)
+D2TM = Cjm
 y(:,1) = Cjm(:,2)
+write(*,*) y(40,1)-y(41,1)
 call write_out_mat(y, "y")
 
 ! Get the projected Galerkin functions
@@ -178,24 +182,29 @@ else
    do jj = 1,NP
       do ii = 1,NF
          x = real(ii-1, kind=dp)*dx - pi/alpha
-         Tyx(jj,ii) = amp*cos(pi*y(jj,1)/2.0_dp)*cos(2.0*alpha*x)
+         Tyx(jj,ii) = amp*cos(pi*y(jj,1)/2.0_dp)*cos(alpha*x)
+         Uyx(jj,ii) = 0 !amp*cos(pi*y(jj,1)/2.0_dp)
       end do
    end do
    ! Bring to Cheb.-Fourier space
    Bmx = matmul(Pmj,Tyx)
    call fftw_execute_dft_r2c(pf1, Bmx, fft1_ml) ! x to Fourier
    Bml = fft1_ml / real(NF, dp)
+
+   Umx = matmul(Pmj,Uyx)
+   call fftw_execute_dft_r2c(pf1, Umx, fft1_ml) ! x to Fourier
+   Uml = fft1_ml / real(NF, dp)
    ! Write solution to file
    !call initial_conditions(Pmj,y,amp,NC)
 end if
 
 ! Call time-integrator
 call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
-             PVEL, Pmj, VM,TM, DVM, DTM, D2VM, D3VM, &
+             PVEL, Pmj, VM,TM, DVM, DTM, DTMb, D2TM, D2VM, D3VM, &
              GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
 
 !call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-!                    PVEL,Cjm,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+!                    PVEL,Cjm,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
 !                    GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
