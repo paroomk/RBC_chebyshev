@@ -317,7 +317,7 @@ subroutine makeVTM(VM, TM, DVM, DTM, DTMb, D2VM, D3VM, Cjm, Pmj, NCin,NPin)
   CM1(1,4) = I3Tpm1(1,1)
   CM1(2,4) = I3Tpm1(2,1)
   CM1(3,4) = at*I2Tpm1(1,1) + bt*I1Tpm1(1,1)
-  CM1(4,4) = ab*I1Tpm1(2,1) + bb*I1Tpm1(2,1)
+  CM1(4,4) = ab*I2Tpm1(2,1) + bb*I1Tpm1(2,1)
 
   ! Form RHS of boundary terms
   IbcV(1,:) = I4Tpm1(1,1:NC) ! v(1)
