@@ -11,6 +11,7 @@ use global, only: set_imex_params, fft_utils,      &
 
 use fftw
 use write_pack
+use statutils
 implicit none
 
 private
@@ -1187,18 +1188,18 @@ endif
 end subroutine update_dt
 
 subroutine backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-                          PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+                          PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
                           GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 integer                 , intent(in)     :: NC, NF
 real(dp),                 intent(in)     :: dt, t_final, kappa, nu
 real(dp), dimension(:,:), intent(in)     :: VM, TM, PVM, PTM, GPTM
 real(dp), dimension(:,:), intent(in)     :: PVEL, Pmj
-real(dp), dimension(:,:), intent(in)     :: DVM, DTM, D2VM, D3VM
+real(dp), dimension(:,:), intent(in)     :: DVM, DTM, DTMb, D2VM, D3VM
 real(dp), dimension(:,:), intent(in)     :: GPVM, GPD2VM, GPD4VM
 real(dp)                                 :: dt_final, time
 real(dp)                                 :: wave, wave2, wave4
-real(dp)                                 :: Vprobe, Tprobe
+real(dp)                                 :: Vprobe, Tprobe, Nuss
 real(dp), allocatable, dimension(:,:)    :: lhs, rhs
 real(dp), allocatable, dimension(:,:)    :: upsilon
 complex(dp), allocatable, dimension(:)   :: temprhs
@@ -1210,6 +1211,8 @@ integer,  allocatable, dimension(:)      :: ipiv
 integer                                  :: info
 integer                                  :: i, tstep
 integer                                  :: NF2
+integer, parameter                       :: interval=500 ! How often to write fields to file
+logical                                  :: iprobe=.true. ! Get time trace of fields
 
 NF2 = NF/2 + 1
 
@@ -1241,6 +1244,7 @@ tstep = 0
 do ! while time < t_final
 
    ! Do some computations using data from previous time step
+   call probes(Vprobe, Tprobe, VM, TM, tstep, interval, iprobe)
 
    ! Bring to physical space to track decay rate
 !   call decay(maxVyx, maxTyx, VM, TM, tstep)
@@ -1259,6 +1263,10 @@ do ! while time < t_final
    else
       time = time + dt
       tstep = tstep + 1
+      call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
+      write(*,*) 't = ', time, 'Nu = ', Nuss  
+      open(unit=8000, file="Nusselt.txt", action="write", status="unknown", position="append")
+      write(8000,*) time, Nuss
    end if
 
    do i = 1,NF/2+1
@@ -1294,8 +1302,8 @@ do ! while time < t_final
       ! VV equation
       upsilon = -wave2*GPVM + GPD2VM
       lhs = upsilon - nu*dt*(wave4*GPVM - 2.0_dp*wave2*GPD2VM + GPD4VM)
-      rhs(:,1) = real (rhsV_hold(:,i)) + dt*real (NLVml(:,i))
-      rhs(:,2) = aimag(rhsV_hold(:,i)) + dt*aimag(NLVml(:,i))
+      rhs(:,1) = real (rhsV_hold(:,i)) - dt*real (NLVml(:,i))
+      rhs(:,2) = aimag(rhsV_hold(:,i)) - dt*aimag(NLVml(:,i))
       ! Solve for the solution at next time step
       call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
       ! Update solution
@@ -1303,8 +1311,8 @@ do ! while time < t_final
 
       ! Temperature equation
       lhs = (1.0_dp + kappa*dt*wave2)*PTM - kappa*dt*eye
-      rhs(:,1) = real (rhsT_hold(:,i)) + dt*real (NLTml(:,i))
-      rhs(:,2) = aimag(rhsT_hold(:,i)) + dt*aimag(NLTml(:,i))
+      rhs(:,1) = real (rhsT_hold(:,i)) - dt*real (NLTml(:,i))
+      rhs(:,2) = aimag(rhsT_hold(:,i)) - dt*aimag(NLTml(:,i))
       ! Solve for solution at next time
       call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
       ! Update solution
@@ -1314,6 +1322,7 @@ do ! while time < t_final
 end do
 
 !close(unit=1501)
+close(unit=8000)
 
 !2000 format(E25.16E3, E25.16E3          )
 !3000 format(E25.16E3, E25.16E3, E25.16E3)

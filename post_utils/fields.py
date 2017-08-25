@@ -4,9 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ### Load solution data ###
-Tyx = np.loadtxt('Th/Tyx000007000.txt') # Temperature
-Vyx = np.loadtxt('VV/Vyx000007000.txt') # Velocity
-y = np.loadtxt('y.txt') # y-coordinate
+Tyx = np.loadtxt('../2E4_wm/Th/Tyx000009500.txt') # Temperature
+Vyx = np.loadtxt('../2E4_wm/VV/Vyx000009500.txt') # Velocity
+y = np.loadtxt('../2E4_wm/y.txt') # y-coordinate
 Ny = np.shape(Tyx)[0] # Number of points in y direction
 Nx = np.shape(Tyx)[1] # Number of points in x direction
 
@@ -35,7 +35,7 @@ Tyx = np.vstack((Ttop, Tyx, Tbot))
 Tyx = np.c_[Tyx, Tyx[:,0]]
 
 # Add conduction solution back in to field
-Tyx = Tyx + Tcond
+#Tyx = Tyx + Tcond
 
 # Plot temperature contours
 figT, axT = plt.subplots(1,1)
