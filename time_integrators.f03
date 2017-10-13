@@ -1188,14 +1188,14 @@ endif
 end subroutine update_dt
 
 subroutine backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-                          PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+                          PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
                           GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 integer                 , intent(in)     :: NC, NF
 real(dp),                 intent(in)     :: dt, t_final, kappa, nu
 real(dp), dimension(:,:), intent(in)     :: VM, TM, PVM, PTM, GPTM
 real(dp), dimension(:,:), intent(in)     :: PVEL, Pmj
-real(dp), dimension(:,:), intent(in)     :: DVM, DTM, D2VM, D3VM
+real(dp), dimension(:,:), intent(in)     :: DVM, DTM, DTMb, D2VM, D3VM
 real(dp), dimension(:,:), intent(in)     :: GPVM, GPD2VM, GPD4VM
 real(dp)                                 :: dt_final, time
 real(dp)                                 :: wave, wave2, wave4
@@ -1263,10 +1263,10 @@ do ! while time < t_final
    else
       time = time + dt
       tstep = tstep + 1
-      !call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
-      !write(*,*) 't = ', time, 'Nu = ', Nuss  
-      !open(unit=8000, file="Nusselt.txt", action="write", status="unknown", position="append")
-      !write(8000,*) time, Nuss
+      call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
+      write(*,*) 't = ', time, 'Nu = ', Nuss  
+      open(unit=8000, file="Nusselt.txt", action="write", status="unknown", position="append")
+      write(8000,*) time, Nuss
    end if
 
    do i = 1,NF/2+1

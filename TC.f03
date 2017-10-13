@@ -183,8 +183,6 @@ else
       do ii = 1,NF
          x = real(ii-1, kind=dp)*dx - pi/alpha
          Tyx(jj,ii) = amp*cos(pi*y(jj,1)/2.0_dp)*cos(alpha*x)
-
-         Uyx(jj,ii) = 0 !amp*cos(pi*y(jj,1)/2.0_dp)
       end do
    end do
    ! Bring to Cheb.-Fourier space
@@ -201,11 +199,11 @@ end if
 
 ! Call time-integrator
 !call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
-!             PVEL, Pmj, VM,TM, DVM, DTM, DTMb, D2TM, D2VM, D3VM, &
+!             PVEL, Pmj, VM,TM, DVM, DTM, D2VM, D3VM, &
 !             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
 
 call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-                    PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
+                    PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
                     GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
