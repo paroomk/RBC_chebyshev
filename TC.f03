@@ -31,8 +31,8 @@ real(dp)                                 :: amp             ! Initial Temperatur
 real(dp)                                 :: Nuss            ! Nusselt number
 real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
-real(dp), parameter                      :: Ra = 2E4_dp, Pr = 7.0_dp
-real(dp), parameter                      :: t_final = 200.0_dp
+real(dp), parameter                      :: Ra = 1.0e4_dp, Pr = 7.0_dp
+real(dp), parameter                      :: t_final = 100.0_dp
 real(dp)                                 :: dt      = 5E-3_dp
 
 logical                                  :: read_ICs = .false.
@@ -183,6 +183,7 @@ else
       do ii = 1,NF
          x = real(ii-1, kind=dp)*dx - pi/alpha
          Tyx(jj,ii) = amp*cos(pi*y(jj,1)/2.0_dp)*cos(alpha*x)
+
          Uyx(jj,ii) = 0 !amp*cos(pi*y(jj,1)/2.0_dp)
       end do
    end do
@@ -199,13 +200,13 @@ else
 end if
 
 ! Call time-integrator
-call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
-             PVEL, Pmj, VM,TM, DVM, DTM, DTMb, D2TM, D2VM, D3VM, &
-             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
+!call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
+!             PVEL, Pmj, VM,TM, DVM, DTM, DTMb, D2TM, D2VM, D3VM, &
+!             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
 
-!call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-!                    PVEL,Cjm,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
-!                    GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
+call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
+                    PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
+                    GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
 
