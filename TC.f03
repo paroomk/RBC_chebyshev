@@ -183,6 +183,7 @@ else
       do ii = 1,NF
          x = real(ii-1, kind=dp)*dx - pi/alpha
          Tyx(jj,ii) = amp*cos(pi*y(jj,1)/2.0_dp)*cos(alpha*x)
+         Uyx(jj,ii) = 0 !amp*cos(pi*y(jj,1)/2.0_dp)
       end do
    end do
    ! Bring to Cheb.-Fourier space
