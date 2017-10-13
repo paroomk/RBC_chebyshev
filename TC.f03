@@ -33,7 +33,7 @@ real(dp), parameter                      :: alpha   = 1.5585_dp
 real(dp)                                 :: nu, kappa
 real(dp), parameter                      :: Ra = 1.0e4_dp, Pr = 7.0_dp
 real(dp), parameter                      :: t_final = 100.0_dp
-real(dp)                                 :: dt      = 5E-3_dp
+real(dp)                                 :: dt      = 0.002_dp
 
 logical                                  :: read_ICs = .false.
 real(dp)                                 :: x, dx
@@ -205,7 +205,7 @@ end if
 !             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
 
 call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-                    PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
+                    PVEL,Pmj,VM,TM,DVM,DTM,D2VM,D3VM, &
                     GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
