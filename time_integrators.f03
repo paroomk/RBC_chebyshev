@@ -1475,8 +1475,8 @@ do ! while time < t_final
 
       ! Temperature equation
       lhs = (1.0_dp + kappa*dt*wave2)*PTM - kappa*dt*eye
-      rhs(:,1) = real (rhsT_hold(:,i)) + dt*real (NLTml(:,i))
-      rhs(:,2) = aimag(rhsT_hold(:,i)) + dt*aimag(NLTml(:,i))
+      rhs(:,1) = real (rhsT_hold(:,i)) - dt*real (NLTml(:,i))
+      rhs(:,2) = aimag(rhsT_hold(:,i)) - dt*aimag(NLTml(:,i))
       ! Solve for solution at next time
       call dgesv(NC, 2, lhs, NC, ipiv, rhs, NC, info)
       ! Update solution
