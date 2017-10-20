@@ -1328,7 +1328,7 @@ do ii = 1,NF2
 end do
 
 call fftw_execute_dft_c2r(ipf1, fft1_ml, fft1_mx) ! Horizontal velocity Fourier to physical
-Uyx = matmul(DVM, fft1_mx)
+Uyx = Uyx + matmul(DVM, fft1_mx)
 
 alpha = kx(2)
 
