@@ -199,13 +199,13 @@ else
 end if
 
 ! Call time-integrator
-!call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
-!             PVEL, Pmj, VM,TM, DVM, DTM, D2VM, D3VM, &
-!             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
+call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
+             PVEL, Pmj, VM,TM, DVM, DTM,DTMb,D2TM,D2VM, D3VM, &
+             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
 
-call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
-                    PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2VM,D3VM, &
-                    GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
+!call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
+!                    PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2TM,D2VM,D3VM, &
+!                    GPVM,GPTM,PVM,PTM,GPD2VM,GPD4VM)
 
 call Nusselt(Nuss, DTMb(1,:), real(Bml(:,1)), NC)
 
