@@ -30,9 +30,10 @@ contains
 
 subroutine imex_rk(NC, NF, dt, t_final, nu, kappa,      &
                    PVEL, Pmj,VM,TM,DVM,DTM,DTMb,D2TM,D2VM,D3VM,   &
-                   GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
+                   GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM,mirror_symmetry)
 
 integer                 , intent(in)     :: NC, NF
+logical                 , intent(in)     :: mirror_symmetry ! To apply mirror symmetry [u,v,T] (x,y) = [-u,v,T] (-x,y)
 real(dp),                 intent(in)     :: dt, t_final, kappa, nu
 real(dp), dimension(:,:), intent(in)     :: PVEL, Pmj
 real(dp), dimension(:,:), intent(in)     :: VM, TM, DVM, DTM, DTMb, D2TM, D2VM, D3VM
@@ -132,19 +133,19 @@ do ! while time < t_final
       write(8000,*) time, Nuss
    end if
 
-   call initrk(K1hV,K1hT,K2hUm,PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,PTM)
+   call initrk(K1hV,K1hT,K2hUm,PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,PTM,mirror_symmetry)
    call stage1(K1V,K1T,K1Um,K2hV,K2hT,K2hUm,                        &
                dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,     &
-               K1hV,K1hT,K1hUm)
+               K1hV,K1hT,K1hUm,mirror_symmetry)
    call stage2(K2V,K2T,K2Um,K3hV,K3hT,K3hUm,                                & 
                K1V,K1T,K1Um,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,             &
-               K1hV,K2hV,K1hT,K2hT,K1hUm,K2hUm)
+               K1hV,K2hV,K1hT,K2hT,K1hUm,K2hUm,mirror_symmetry)
    call stage3(K3V,K3T,K3Um,K4hV,K4hT,K4hUm,                                        &
                K1V,K1T,K1Um,K2V,K2T,K2Um,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,                     &
-               K1hV,K2hV,K3hV,K1hT,K2hT,K3hT,K1hUm,K2hUm,K3hUm)
+               K1hV,K2hV,K3hV,K1hT,K2hT,K3hT,K1hUm,K2hUm,K3hUm,mirror_symmetry)
 
    ! Update solution
    Aml = Aml + dt*(c1*(K1V+K2hV) + c2*(K2V+K3hV) + c3*(K3V+K4hV))
@@ -156,7 +157,7 @@ do ! while time < t_final
 !   call update_u(Pmj,D3VM)
 
    !Update dt
-   call update_dt(VM,DVM,TM,dt)
+!   call update_dt(VM,DVM,TM,dt)
 end do
 
 close(unit=1500)
@@ -167,7 +168,7 @@ close(unit=8000)
 
 end subroutine imex_rk
 
-subroutine initrk(K1hV,K1hT,K1hUm,PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,PTM)
+subroutine initrk(K1hV,K1hT,K1hUm,PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2TM,D2VM,D3VM,PTM,mirror_symmetry)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   !
@@ -195,6 +196,7 @@ subroutine initrk(K1hV,K1hT,K1hUm,PVEL,Pmj,GPVM,GPD2VM,GPTM,PVM,VM,TM,DVM,DTM,D2
   !
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
 
+logical                 , intent(in)                  :: mirror_symmetry ! To apply mirror symmetry [u,v,T] (x,y) = [-u,v,T] (-x,y)
 real(dp)   , dimension(:,:),              intent(in)  :: GPVM, GPD2VM, GPTM
 real(dp)   , dimension(:,:),              intent(in)  :: PVEL, Pmj, PVM
 real(dp)   , dimension(:,:),              intent(in)  :: VM, TM, DVM, DTM, D2TM, D2VM, D3VM, PTM
@@ -260,7 +262,7 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, GPTM, NC, aimag(Bml(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -(real (NLVml(:,i)) + wave2*Kre)
-   rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+   rhs(:,2) = 0 !-(aimag(NLVml(:,i)) + wave2*Kim)
    
    ! Get K1hV
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -271,7 +273,12 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, PVM, NC, aimag(Aml(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -real (NLTml(:,i)) + Kre
-   rhs(:,2) = -aimag(NLTml(:,i)) + Kim
+
+   if(mirror_symmetry) then
+     rhs(:,2) = 0 
+   else
+     rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+   end if
 
    ! Get K1hT
    ups = PTM ! Use ups as a temp array for now
@@ -430,7 +437,7 @@ do j = 1,NP
 end do
  
 NLUml = matmul(Pmj,real(Um))
-NLUml = 0.0_dp
+!NLUml = 0.0_dp
 
 fft1_yl = lapV 
 call fftw_execute_dft_c2r(ipfy, fft1_yl, fft1_yx) ! Laplacian of VV from Fourier to physical
@@ -479,7 +486,7 @@ end subroutine nonlinear_terms
 subroutine stage1(K1V,K1T,K1Um,K2hV,K2hT,K2hUm,                &
                  dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                  GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,         &
-                 K1hV,K1hT,K1hUm)
+                 K1hV,K1hT,K1hUm,mirror_symmetry)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   ! Performs first stage of IMEX-RK 3-4-3 method
@@ -517,6 +524,7 @@ subroutine stage1(K1V,K1T,K1Um,K2hV,K2hT,K2hUm,                &
 
 implicit none
 
+logical                 , intent(in)                  :: mirror_symmetry ! To apply mirror symmetry [u,v,T] (x,y) = [-u,v,T] (-x,y)
 real(dp)   ,                              intent(in)  :: dt, nu, kappa
 real(dp)   , dimension(:,:),              intent(in)  :: GPVM, GPD2VM, GPD4VM
 real(dp)   , dimension(:,:),              intent(in)  :: PVEL, Pmj, VM, TM
@@ -671,7 +679,7 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, PVM, NC, aimag(Aml1(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -real (NLTml(:,i)) + Kre
-   rhs(:,2) = -aimag(NLTml(:,i)) + Kim
+   rhs(:,2) = 0 !-aimag(NLTml(:,i)) + Kim
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -682,7 +690,12 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, GPTM, NC, aimag(Bml1(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -(real (NLVml(:,i)) + wave2*Kre)
-   rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+
+   if(mirror_symmetry) then
+     rhs(:,2) = 0 
+   else
+     rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+   end if
 
    ups = -wave2*GPVM + GPD2VM
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -700,7 +713,7 @@ end subroutine stage1
 subroutine stage2(K2V,K2T,K2Um,K3hV,K3hT,K3hUm,                      &
                K1V,K1T,K1Um,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,                 &
-               K1hV,K2hV,K1hT,K2hT,K1hUm,K2hUm)
+               K1hV,K2hV,K1hT,K2hT,K1hUm,K2hUm,mirror_symmetry)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   ! Performs second stage of IMEX-RK 3-4-3 method
@@ -742,6 +755,7 @@ subroutine stage2(K2V,K2T,K2Um,K3hV,K3hT,K3hUm,                      &
 
 implicit none
 
+logical                 , intent(in)                  :: mirror_symmetry ! To apply mirror symmetry [u,v,T] (x,y) = [-u,v,T] (-x,y)
 real(dp)   ,                              intent(in)  :: dt, nu, kappa
 real(dp)   , dimension(:,:),              intent(in)  :: GPVM, GPD2VM, GPD4VM
 real(dp)   , dimension(:,:),              intent(in)  :: PVEL, Pmj, TM, VM
@@ -898,7 +912,7 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, PVM, NC, aimag(Aml2(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -real (NLTml(:,i)) + Kre
-   rhs(:,2) = -aimag(NLTml(:,i)) + Kim
+   rhs(:,2) = 0 !-aimag(NLTml(:,i)) + Kim
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -909,7 +923,12 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, GPTM, NC, aimag(Bml2(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -(real (NLVml(:,i)) + wave2*Kre)
-   rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+
+   if(mirror_symmetry) then
+     rhs(:,2) = 0 
+   else
+     rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+   end if
 
    ups = -wave2*GPVM + GPD2VM
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -927,7 +946,7 @@ end subroutine stage2
 subroutine stage3(K3V,K3T,K3Um,K4hV,K4hT,K4hUm,                              &
                K1V,K1T,K1Um,K2V,K2T,K2Um,dt,nu,kappa,PVEL,Pmj,VM,TM,DVM,DTM,D2TM,D2VM,D3VM, &
                GPVM,GPD2VM,GPD4VM,GPTM,PVM,PDVM,PTM,                          &
-               K1hV,K2hV,K3hV,K1hT,K2hT,K3hT,K1hUm,K2hUm,K3hUm)
+               K1hV,K2hV,K3hV,K1hT,K2hT,K3hT,K1hUm,K2hUm,K3hUm,mirror_symmetry)
 
   !:::::::::::::::::::::::::::::::::::::::::::::::::::::::::!
   ! Performs third stage of IMEX-RK 3-4-3 method
@@ -973,6 +992,7 @@ subroutine stage3(K3V,K3T,K3Um,K4hV,K4hT,K4hUm,                              &
 
 implicit none
 
+logical                 , intent(in)                  :: mirror_symmetry ! To apply mirror symmetry [u,v,T] (x,y) = [-u,v,T] (-x,y)
 real(dp)   ,                              intent(in)  :: dt, nu, kappa
 real(dp)   , dimension(:,:),              intent(in)  :: GPVM, GPD2VM, GPD4VM
 real(dp)   , dimension(:,:),              intent(in)  :: PVEL, Pmj, VM, TM
@@ -1132,7 +1152,7 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, PVM, NC, aimag(Aml3(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -real (NLTml(:,i)) + Kre
-   rhs(:,2) = -aimag(NLTml(:,i)) + Kim
+   rhs(:,2) = 0 !-aimag(NLTml(:,i)) + Kim
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -1143,7 +1163,12 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, GPTM, NC, aimag(Bml3(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -(real (NLVml(:,i)) + wave2*Kre)
-   rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+
+   if(mirror_symmetry) then
+     rhs(:,2) = 0 
+   else
+     rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+   end if
 
    ups = -wave2*GPVM + GPD2VM
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)

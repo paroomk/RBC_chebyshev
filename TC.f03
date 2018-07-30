@@ -29,19 +29,22 @@ real(dp), allocatable, dimension(:,:)    :: PVEL            ! Projector for v-eq
 !real(dp), allocatable, dimension(:,:)    :: y               ! y-coordinate
 real(dp)                                 :: amp             ! Initial Temperature amplitude
 real(dp)                                 :: Nuss            ! Nusselt number
-real(dp), parameter                      :: alpha   = 1.5585_dp
+real(dp), parameter                      :: alpha   = 1.5581
 real(dp)                                 :: nu, kappa
-real(dp), parameter                      :: Ra = 1.0e4_dp, Pr = 7.0_dp
-real(dp), parameter                      :: t_final = 100.0_dp
-real(dp)                                 :: dt      = 0.002_dp
+real(dp), parameter                      :: Ra = 5.277302244797398E+06_dp, Pr = 7.0_dp
+real(dp), parameter                      :: t_final = 500.0_dp
+real(dp)                                 :: dt      = 0.005_dp
 
 logical                                  :: read_ICs = .false.
+logical                                  :: mirror_symmetry = .true. ! To apply mirror symmetry [u,v,T] (x,y) = [-u,v,T] (-x,y)
 real(dp)                                 :: x, dx
 
 !alpha = pi/(2.0_dp*sqrt(2.0))
 
 nu    = dsqrt(16.0_dp*Pr/Ra)
+!nu    = dsqrt(Pr/Ra)
 kappa = dsqrt(16.0_dp/(Pr*Ra))
+!kappa = dsqrt((Pr*Ra))
 
 ! Ra = 4.0e+06
 !NC = 100
@@ -49,9 +52,9 @@ kappa = dsqrt(16.0_dp/(Pr*Ra))
 !NF = 128
 
 ! Ra = 4.0e+06
-NC = 40
+NC = 100
 NP = NC + 4
-NF = 64
+NF = 128
 
 ! Original params
 !NC = 45
@@ -201,7 +204,7 @@ end if
 ! Call time-integrator
 call imex_rk(NC, NF, dt, t_final, nu, kappa,    &
              PVEL, Pmj, VM,TM, DVM, DTM,DTMb,D2TM,D2VM, D3VM, &
-             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM)
+             GPVM,GPTM,PVM,PDVM,PTM,GPD2VM,GPD4VM,mirror_symmetry)
 
 !call backward_euler(NC,NF,dt,t_final,nu,kappa,        &
 !                    PVEL,Pmj,VM,TM,DVM,DTM,DTMb,D2TM,D2VM,D3VM, &
