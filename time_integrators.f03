@@ -262,7 +262,12 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, GPTM, NC, aimag(Bml(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -(real (NLVml(:,i)) + wave2*Kre)
-   rhs(:,2) = 0 !-(aimag(NLVml(:,i)) + wave2*Kim)
+   if(mirror_symmetry) then
+     rhs(:,2) = 0 
+   else
+     rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+   end if
+
    
    ! Get K1hV
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -277,7 +282,7 @@ do i = 1,NF2
    if(mirror_symmetry) then
      rhs(:,2) = 0 
    else
-     rhs(:,2) = -(aimag(NLVml(:,i)) + wave2*Kim)
+     rhs(:,2) = -aimag(NLTml(:,i)) + Kim
    end if
 
    ! Get K1hT
@@ -679,7 +684,12 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, PVM, NC, aimag(Aml1(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -real (NLTml(:,i)) + Kre
-   rhs(:,2) = 0 !-aimag(NLTml(:,i)) + Kim
+
+   if(mirror_symmetry) then
+     rhs(:,2) = 0 
+   else
+     rhs(:,2) = -aimag(NLTml(:,i)) + Kim
+   end if
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -912,7 +922,12 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, PVM, NC, aimag(Aml2(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -real (NLTml(:,i)) + Kre
-   rhs(:,2) = 0 !-aimag(NLTml(:,i)) + Kim
+
+   if(mirror_symmetry) then
+     rhs(:,2) = 0 
+   else
+     rhs(:,2) = -aimag(NLTml(:,i)) + Kim
+   end if
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
@@ -1152,7 +1167,12 @@ do i = 1,NF2
    call dgemv('n', NC, NC, scale1, PVM, NC, aimag(Aml3(:,i)), incx, scale2, Kim, incy)
 
    rhs(:,1) = -real (NLTml(:,i)) + Kre
-   rhs(:,2) = 0 !-aimag(NLTml(:,i)) + Kim
+
+   if(mirror_symmetry) then
+     rhs(:,2) = 0 
+   else
+     rhs(:,2) = -aimag(NLTml(:,i)) + Kim
+   end if
 
    ups = PTM ! Use ups as temp array
    call dgesv(NC, 2, ups, NC, ipiv, rhs, NC, info)
